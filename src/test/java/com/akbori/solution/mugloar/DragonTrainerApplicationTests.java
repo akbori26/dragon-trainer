@@ -1,4 +1,4 @@
-package com.akbori.solution.dragon_trainer;
+package com.akbori.solution.mugloar;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

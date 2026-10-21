@@ -1,3 +1,13 @@
 spring:
   application:
     name: dragon-trainer
+  datasource:
+    url: jdbc:sqlite:/Users/fahrettin/development/dragon-trainer/src/main/resources/data/mugloar.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ## update
+      ddl-auto: none
+
+

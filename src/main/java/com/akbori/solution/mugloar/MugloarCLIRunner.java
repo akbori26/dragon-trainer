@@ -195,9 +195,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
             return;
         }
 
-        System.out.println("\n+-----+-------+--------+---------+---------------------------------------+---------------------------------------------+");
-        System.out.printf("| %-3s | %-5s | %-6s | %-7s | %-37s | %-43s |%n", "IDX", "USED?", "GOLD", "EXPIRES", "RISK METRIC", "ADMISSION SPECIFICATION MESSAGE");
-        System.out.println("+-----+-------+--------+---------+---------------------------------------+---------------------------------------------+");
+        System.out.println("\n+-----+------------+-------+--------+---------+---------------------------------------+---------------------------------------------+");
+        System.out.printf("| %-3s | %-10s | %-5s | %-6s | %-7s | %-37s | %-43s |%n", "IDX", "AD ID", "USED?", "GOLD", "EXPIRES", "RISK METRIC", "ADMISSION SPECIFICATION MESSAGE");
+        System.out.println("+-----+------------+-------+--------+---------+---------------------------------------+---------------------------------------------+");
 
         // "IDX (AdId)" labels for the used-ads summary line
         List<String> usedLabels = new ArrayList<>();
@@ -212,9 +212,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
             String expires = remaining > 0 ? String.valueOf(remaining) : "EXPIRED";
             String truncatedMsg = ad.getMessage().length() > 40 ? ad.getMessage().substring(0, 37) + "..." : ad.getMessage();
 
-            System.out.printf("| %-3d | %-5s | %-6d | %-7s | %-37s | %-43s |%n", idx, usedFlag, ad.getReward(), expires, riskExplain, truncatedMsg);
+            System.out.printf("| %-3d | %-10s | %-5s | %-6d | %-7s | %-37s | %-43s |%n", idx, ad.getAdId(), usedFlag, ad.getReward(), expires, riskExplain, truncatedMsg);
         }
-        System.out.println("+-----+-------+--------+---------+---------------------------------------+---------------------------------------------+");
+        System.out.println("+-----+------------+-------+--------+---------+---------------------------------------+---------------------------------------------+");
         System.out.printf("🚫 Used ads in this game: %d%s%n", usedLabels.size(),
                 usedLabels.isEmpty() ? "" : " -> " + String.join(", ", usedLabels));
         System.out.println("💡 Strategy: Note down the 'IDX' number, select menu, and enter it to launch your dragon.");

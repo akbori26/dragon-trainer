@@ -32,6 +32,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
     private String currentGameId = null;
     private List<CachedAd> cachedAds = new ArrayList<>();
 
+    /**
+     * Wires the API service and the SQLite repositories used by the terminal menu.
+     */
     public MugloarCLIRunner(MugloarService mugloarService, PlayerStatusRepository playerRepo,
                             MissionLogRepository logRepo, AppConfigRepository configRepo,
                             CachedAdRepository adRepo) {
@@ -42,6 +45,11 @@ public class MugloarCLIRunner implements CommandLineRunner {
         this.adRepo = adRepo;
     }
 
+    /**
+     * Entry point of the CLI.
+     * Auto-resumes the last saved game (LAST_GAME_ID in app_config) if there is one,
+     * then loops on the action menu until the user chooses to exit.
+     */
     @Override
     public void run(String... args) throws Exception {
         Scanner scanner = new Scanner(System.in);
@@ -81,6 +89,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
         }
     }
 
+    /**
+     * Prints the action dashboard with the available menu options [1-6].
+     */
     private void printGridMenu() {
         System.out.println("\n+---------------------------------------------------+");
         System.out.println("|                 ACTION DASHBOARD                  |");
@@ -94,6 +105,10 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.println("+----+------------------+---------------------------+");
     }
 
+    /**
+     * Starts a new game via the API, stores the initial player status,
+     * and saves the game ID as LAST_GAME_ID so the session can be resumed later.
+     */
     private void handleStart() {
         System.out.println("\nConnecting to game server for a new instance...");
         GameStartResponse res = mugloarService.startNewGame();
@@ -114,12 +129,11 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
 
     /**
-     - It first loads cachedAds from the database by currentGameId.                                                                                                                                                       │────────────────────────────────────────────────────────────────────────────────────────
-    - If that comes back empty, it calls mugloarService.getMessageBoard(...) and saves the downloaded ads, using each ad's board position as its index. That way the IDX numbers in handleSolve still match after a      │src/main/java/com/akbori/solution/mugloar/model/CachedAd.java (untracked)
-      restart.                                                                                                                                                                                                           │────────────────────────────────────────────────────────────────────────────────────────
-    - Otherwise it prints "Loaded N contracts from local cache."
-
-
+     * Shows the message board for the current game.
+     * Loads the ads from the cached_ad table by game ID first. Only if none are stored,
+     * downloads the board from the API and saves it, using each ad's board position as its
+     * display index so the IDX numbers stay stable across restarts.
+     * Ads flagged as used in the DB are marked USED and listed as "IDX (AdId)" at the end.
      */
     private void handleBoard() {
         if (checkSessionMissing()) return;
@@ -167,6 +181,13 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.println("💡 Strategy: Note down the 'IDX' number, select menu, and enter it to launch your dragon.");
     }
 
+    /**
+     * Asks for a board IDX and sends the dragon to solve that ad.
+     * Refuses ads already flagged as used. On a solve, logs the result to mission_log,
+     * marks the ad as used in cached_ad and updates the stored player status.
+     *
+     * @param scanner Console input used to read the ad index
+     */
     private void handleSolve(Scanner scanner) {
         if (checkSessionMissing()) return;
         if (cachedAds.isEmpty()) {
@@ -224,6 +245,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.println("+--------------------------------------------------------------------------------------------+");
     }
 
+    /**
+     * Prints the current game's player status (turn, lives, gold, score, high score) from SQLite.
+     */
     private void handleStatus() {
         if (checkSessionMissing()) return;
 
@@ -241,6 +265,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
         }, () -> System.out.println("⚠️ Warning: Data record entry matching this ID was not found in SQLite."));
     }
 
+    /**
+     * Prints the mission log of the current game, newest attempt first.
+     */
     private void handleHistory() {
         if (checkSessionMissing()) return;
 
@@ -263,6 +290,13 @@ public class MugloarCLIRunner implements CommandLineRunner {
         }
         System.out.println("+----------+----------------------+--------+-----------+---------------------------------------------+");
     }
+
+    /**
+     * Maps the API's probability text to a colored risk label.
+     *
+     * @param probability Probability text from the ad, e.g. "Piece of cake"
+     * @return Risk label such as "🟢 SAFE", or the raw text in upper case if unknown
+     */
     private String mapRiskCategory(String probability) {
         if (probability == null) return "UNKNOWN RISK";
         return switch (probability.toLowerCase()) {
@@ -273,6 +307,12 @@ public class MugloarCLIRunner implements CommandLineRunner {
             default -> "⚪ " + probability.toUpperCase();
         };
     }
+
+    /**
+     * Checks whether a game session is active and prints a warning if not.
+     *
+     * @return true if there is no current game ID
+     */
     private boolean checkSessionMissing() {
         if (currentGameId == null) {
             System.out.println("❌ Access Denied: Initialize or restore an active session via item [1] first.");

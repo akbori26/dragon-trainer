@@ -340,7 +340,8 @@ public class MugloarCLIRunner implements CommandLineRunner {
         if (probability == null) return "UNKNOWN RISK";
         return switch (probability.toLowerCase()) {
             case "sure thing", "piece of cake", "walk in the park" -> "🟢 SAFE";
-            case "quite likely", "hmmm" -> "🟡 MODERATE";
+            case "quite likely", "hmmm", "hmmm...." -> "🟡 MODERATE";
+            case "gamble" -> "🎲 GAMBLE";
             case "risky", "rather detrimental" -> "🟠 DANGEROUS";
             case "suicide mission" -> "🔴 FATAL THREAT";
             default -> "⚪ " + probability.toUpperCase();

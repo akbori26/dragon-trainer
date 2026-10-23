@@ -136,9 +136,14 @@ public class MugloarCLIRunner implements CommandLineRunner {
      * downloads the board from the API and saves it, using each ad's board position as its
      * display index so the IDX numbers stay stable across restarts.
      * Ads flagged as used in the DB are marked USED and listed as "IDX (AdId)" at the end.
+     * The EXPIRES column is expiresIn minus the turns played since the board was downloaded
+     * (current turn from player_status), shown as EXPIRED once it reaches 0.
      */
     private void handleBoard() {
         if (checkSessionMissing()) return;
+
+        // Current turn from player_status; expiresIn is counted down from the turn the board was downloaded
+        int currentTurn = playerRepo.findById(currentGameId).map(PlayerStatus::getTurn).orElse(0);
 
         // Look in the local DB first; only hit the API when this game has no stored ads
         cachedAds = adRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
@@ -149,7 +154,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
             List<CachedAd> rows = new ArrayList<>();
             for (int i = 0; i < downloaded.size(); i++) {
                 AdItem ad = downloaded.get(i);
-                rows.add(new CachedAd(currentGameId, i, ad, mapRiskCategory(ad.probability())));
+                rows.add(new CachedAd(currentGameId, i, ad, mapRiskCategory(ad.probability()), currentTurn));
             }
             cachedAds = adRepo.saveAll(rows);
         } else {
@@ -161,9 +166,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
             return;
         }
 
-        System.out.println("\n+-----+-------+--------+---------------------------------------+---------------------------------------------+");
-        System.out.printf("| %-3s | %-5s | %-6s | %-37s | %-43s |%n", "IDX", "USED?", "GOLD", "RISK METRIC", "ADMISSION SPECIFICATION MESSAGE");
-        System.out.println("+-----+-------+--------+---------------------------------------+---------------------------------------------+");
+        System.out.println("\n+-----+-------+--------+---------+---------------------------------------+---------------------------------------------+");
+        System.out.printf("| %-3s | %-5s | %-6s | %-7s | %-37s | %-43s |%n", "IDX", "USED?", "GOLD", "EXPIRES", "RISK METRIC", "ADMISSION SPECIFICATION MESSAGE");
+        System.out.println("+-----+-------+--------+---------+---------------------------------------+---------------------------------------------+");
 
         // "IDX (AdId)" labels for the used-ads summary line
         List<String> usedLabels = new ArrayList<>();
@@ -173,11 +178,13 @@ public class MugloarCLIRunner implements CommandLineRunner {
             String riskExplain = mapRiskCategory(ad.getProbability());
             if (ad.isUsed()) usedLabels.add(i + " (" + ad.getAdId() + ")");
             String usedFlag = ad.isUsed() ? "USED" : "----";
+            int remaining = ad.remainingExpiresIn(currentTurn);
+            String expires = remaining > 0 ? String.valueOf(remaining) : "EXPIRED";
             String truncatedMsg = ad.getMessage().length() > 40 ? ad.getMessage().substring(0, 37) + "..." : ad.getMessage();
 
-            System.out.printf("| %-3d | %-5s | %-6d | %-37s | %-43s |%n", i, usedFlag, ad.getReward(), riskExplain, truncatedMsg);
+            System.out.printf("| %-3d | %-5s | %-6d | %-7s | %-37s | %-43s |%n", i, usedFlag, ad.getReward(), expires, riskExplain, truncatedMsg);
         }
-        System.out.println("+-----+-------+--------+---------------------------------------+---------------------------------------------+");
+        System.out.println("+-----+-------+--------+---------+---------------------------------------+---------------------------------------------+");
         System.out.printf("🚫 Used ads in this game: %d%s%n", usedLabels.size(),
                 usedLabels.isEmpty() ? "" : " -> " + String.join(", ", usedLabels));
         System.out.println("💡 Strategy: Note down the 'IDX' number, select menu, and enter it to launch your dragon.");

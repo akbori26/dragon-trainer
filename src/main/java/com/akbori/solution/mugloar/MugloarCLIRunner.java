@@ -15,7 +15,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Scanner;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class MugloarCLIRunner implements CommandLineRunner {
@@ -71,7 +74,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
         while (true) {
             printGridMenu();
-            System.out.print("\nSelect an action [1-7]: ");
+            System.out.print("\nSelect an action [1-8]: ");
             String command = scanner.nextLine().trim();
 
             switch (command) {
@@ -81,29 +84,31 @@ public class MugloarCLIRunner implements CommandLineRunner {
                 case "4" -> handleStatus();
                 case "5" -> handleHistory();
                 case "6" -> handleReputation();
-                case "7" -> {
+                case "7" -> handleDownloadAds();
+                case "8" -> {
                     System.out.println("\nSaving application state configuration... Goodbye!");
                     System.exit(0);
                 }
-                default -> System.out.println("❌ Invalid option. Please input a number from 1 to 7.");
+                default -> System.out.println("❌ Invalid option. Please input a number from 1 to 8.");
             }
         }
     }
 
     /**
-     * Prints the action dashboard with the available menu options [1-7].
+     * Prints the action dashboard with the available menu options [1-8].
      */
     private void printGridMenu() {
         System.out.println("\n+---------------------------------------------------+");
         System.out.println("|                 ACTION DASHBOARD                  |");
         System.out.println("+----+------------------+---------------------------+");
         System.out.println("|  1 | Start Game       | Initialize a fresh session|");
-        System.out.println("|  2 | View Board       | Refresh available jobs    |");
+        System.out.println("|  2 | View Board       | Show stored jobs          |");
         System.out.println("|  3 | Solve Ad         | Accept job by index num   |");
         System.out.println("|  4 | Check Status     | Read local character data |");
         System.out.println("|  5 | View Logs        | Review attempt statistics |");
         System.out.println("|  6 | Reputation       | Investigate standing      |");
-        System.out.println("|  7 | Exit Terminal    | Safely shut down framework|");
+        System.out.println("|  7 | Download Ads     | Fetch new jobs from server|");
+        System.out.println("|  8 | Exit Terminal    | Safely shut down framework|");
         System.out.println("+----+------------------+---------------------------+");
     }
 
@@ -131,10 +136,48 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
 
     /**
-     * Shows the message board for the current game.
-     * Loads the ads from the cached_ad table by game ID first. Only if none are stored,
-     * downloads the board from the API and saves it, using each ad's board position as its
-     * display index so the IDX numbers stay stable across restarts.
+     * Downloads a fresh list of ads from the API and replaces this game's ads in cached_ad.
+     * Each ad's board position becomes its display index and the current turn is stored as
+     * fetchedTurn, so the EXPIRES countdown starts from now. Ads that were already used keep
+     * their used flag if the server lists them again. If the download fails or returns nothing,
+     * the stored ads are left untouched. Shows the new board afterwards.
+     */
+    private void handleDownloadAds() {
+        if (checkSessionMissing()) return;
+
+        System.out.println("\nDownloading active contracts...");
+        List<AdItem> downloaded = mugloarService.getMessageBoard(currentGameId);
+        if (downloaded.isEmpty()) {
+            System.out.println("⚠️ No contracts downloaded; the stored board was kept.");
+            return;
+        }
+
+        int currentTurn = playerRepo.findById(currentGameId).map(PlayerStatus::getTurn).orElse(0);
+
+        // Remember which ads were already used before the old rows are replaced
+        Set<String> usedAdIds = adRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId).stream()
+                .filter(CachedAd::isUsed)
+                .map(CachedAd::getAdId)
+                .collect(Collectors.toSet());
+
+        List<CachedAd> rows = new ArrayList<>();
+        for (int i = 0; i < downloaded.size(); i++) {
+            AdItem ad = downloaded.get(i);
+            CachedAd row = new CachedAd(currentGameId, i, ad, mapRiskCategory(ad.probability()), currentTurn);
+            row.setUsed(usedAdIds.contains(ad.adId()));
+            rows.add(row);
+        }
+
+        adRepo.deleteByGameId(currentGameId);
+        adRepo.saveAll(rows);
+        System.out.println("✅ Stored " + rows.size() + " contracts.");
+
+        handleBoard();
+    }
+
+    /**
+     * Shows the message board for the current game from the cached_ad table.
+     * Ads are only read from the database; use action [7] to download a new list from the API.
      * Ads flagged as used in the DB are marked USED and listed as "IDX (AdId)" at the end.
      * The EXPIRES column is expiresIn minus the turns played since the board was downloaded
      * (current turn from player_status), shown as EXPIRED once it reaches 0.
@@ -145,24 +188,10 @@ public class MugloarCLIRunner implements CommandLineRunner {
         // Current turn from player_status; expiresIn is counted down from the turn the board was downloaded
         int currentTurn = playerRepo.findById(currentGameId).map(PlayerStatus::getTurn).orElse(0);
 
-        // Look in the local DB first; only hit the API when this game has no stored ads
         cachedAds = adRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
 
         if (cachedAds.isEmpty()) {
-            System.out.println("\nDownloading active contracts...");
-            List<AdItem> downloaded = mugloarService.getMessageBoard(currentGameId);
-            List<CachedAd> rows = new ArrayList<>();
-            for (int i = 0; i < downloaded.size(); i++) {
-                AdItem ad = downloaded.get(i);
-                rows.add(new CachedAd(currentGameId, i, ad, mapRiskCategory(ad.probability()), currentTurn));
-            }
-            cachedAds = adRepo.saveAll(rows);
-        } else {
-            System.out.println("\nLoaded " + cachedAds.size() + " contracts from local cache.");
-        }
-
-        if (cachedAds.isEmpty()) {
-            System.out.println("⚠️ The board has no current contracts.");
+            System.out.println("⚠️ No contracts stored for this game. Run action [7] to download them.");
             return;
         }
 
@@ -219,7 +248,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
         if (targetedAd.isUsed()) {
             System.out.printf("⚠️ Warning: Ad ID %s has already been used in this game and should not be used a second time.%n", targetedAd.getAdId());
-            System.out.println("   Pick a different ad, or run action [2] to refresh the board.");
+            System.out.println("   Pick a different ad, or run action [7] to download a new board.");
             return;
         }
 
@@ -338,13 +367,14 @@ public class MugloarCLIRunner implements CommandLineRunner {
      */
     private String mapRiskCategory(String probability) {
         if (probability == null) return "UNKNOWN RISK";
-        return switch (probability.toLowerCase()) {
+        // Locale.ROOT so a Turkish default locale doesn't turn "i" into "İ" / "I" into "ı"
+        return switch (probability.toLowerCase(Locale.ROOT)) {
             case "sure thing", "piece of cake", "walk in the park" -> "🟢 SAFE";
             case "quite likely", "hmmm", "hmmm...." -> "🟡 MODERATE";
             case "gamble" -> "🎲 GAMBLE";
             case "risky", "rather detrimental" -> "🟠 DANGEROUS";
             case "suicide mission" -> "🔴 FATAL THREAT";
-            default -> "⚪ " + probability.toUpperCase();
+            default -> "⚪ " + probability.toUpperCase(Locale.ROOT);
         };
     }
 

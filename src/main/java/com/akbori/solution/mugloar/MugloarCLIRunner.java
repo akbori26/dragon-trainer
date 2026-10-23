@@ -204,14 +204,15 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
         for (int i = 0; i < cachedAds.size(); i++) {
             CachedAd ad = cachedAds.get(i);
+            int idx = i + 1; // IDX shown to the user starts from 1
             String riskExplain = mapRiskCategory(ad.getProbability());
-            if (ad.isUsed()) usedLabels.add(i + " (" + ad.getAdId() + ")");
+            if (ad.isUsed()) usedLabels.add(idx + " (" + ad.getAdId() + ")");
             String usedFlag = ad.isUsed() ? "USED" : "----";
             int remaining = ad.remainingExpiresIn(currentTurn);
             String expires = remaining > 0 ? String.valueOf(remaining) : "EXPIRED";
             String truncatedMsg = ad.getMessage().length() > 40 ? ad.getMessage().substring(0, 37) + "..." : ad.getMessage();
 
-            System.out.printf("| %-3d | %-5s | %-6d | %-7s | %-37s | %-43s |%n", i, usedFlag, ad.getReward(), expires, riskExplain, truncatedMsg);
+            System.out.printf("| %-3d | %-5s | %-6d | %-7s | %-37s | %-43s |%n", idx, usedFlag, ad.getReward(), expires, riskExplain, truncatedMsg);
         }
         System.out.println("+-----+-------+--------+---------+---------------------------------------+---------------------------------------------+");
         System.out.printf("🚫 Used ads in this game: %d%s%n", usedLabels.size(),
@@ -233,11 +234,12 @@ public class MugloarCLIRunner implements CommandLineRunner {
             return;
         }
 
-        System.out.printf("\nEnter target ad index number [0-%d]: ", cachedAds.size() - 1);
+        System.out.printf("\nEnter target ad index number [1-%d]: ", cachedAds.size());
         String input = scanner.nextLine().trim();
         int index;
         try {
-            index = Integer.parseInt(input);
+            // IDX on the board starts from 1, the list is 0-based
+            index = Integer.parseInt(input) - 1;
             if (index < 0 || index >= cachedAds.size()) throw new IndexOutOfBoundsException();
         } catch (Exception e) {
             System.out.println("❌ Invalid number index entry.");

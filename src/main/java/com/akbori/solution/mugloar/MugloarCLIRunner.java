@@ -71,7 +71,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
         while (true) {
             printGridMenu();
-            System.out.print("\nSelect an action [1-6]: ");
+            System.out.print("\nSelect an action [1-7]: ");
             String command = scanner.nextLine().trim();
 
             switch (command) {
@@ -80,17 +80,18 @@ public class MugloarCLIRunner implements CommandLineRunner {
                 case "3" -> handleSolve(scanner);
                 case "4" -> handleStatus();
                 case "5" -> handleHistory();
-                case "6" -> {
+                case "6" -> handleReputation();
+                case "7" -> {
                     System.out.println("\nSaving application state configuration... Goodbye!");
                     System.exit(0);
                 }
-                default -> System.out.println("❌ Invalid option. Please input a number from 1 to 6.");
+                default -> System.out.println("❌ Invalid option. Please input a number from 1 to 7.");
             }
         }
     }
 
     /**
-     * Prints the action dashboard with the available menu options [1-6].
+     * Prints the action dashboard with the available menu options [1-7].
      */
     private void printGridMenu() {
         System.out.println("\n+---------------------------------------------------+");
@@ -101,7 +102,8 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.println("|  3 | Solve Ad         | Accept job by index num   |");
         System.out.println("|  4 | Check Status     | Read local character data |");
         System.out.println("|  5 | View Logs        | Review attempt statistics |");
-        System.out.println("|  6 | Exit Terminal    | Safely shut down framework|");
+        System.out.println("|  6 | Reputation       | Investigate standing      |");
+        System.out.println("|  7 | Exit Terminal    | Safely shut down framework|");
         System.out.println("+----+------------------+---------------------------+");
     }
 
@@ -289,6 +291,34 @@ public class MugloarCLIRunner implements CommandLineRunner {
                     log.getAdId(), log.getReward(), outcome, truncMsg);
         }
         System.out.println("+----------+----------------------+--------+-----------+---------------------------------------------+");
+    }
+
+    /**
+     * Investigates the dragon's reputation via the API and prints the standing
+     * with the people, the state and the underworld.
+     * On success the stored player status turn count is increased by 1.
+     * HTTP errors are reported by the service, so nothing is printed here when the call fails.
+     */
+    private void handleReputation() {
+        if (checkSessionMissing()) return;
+
+        System.out.println("\nInvestigating reputation...");
+        ReputationResponse rep = mugloarService.investigateReputation(currentGameId);
+        if (rep == null) return;
+
+        // Investigating costs a turn, but the response has no turn field, so bump it locally
+        playerRepo.findById(currentGameId).ifPresent(status -> {
+            status.setTurn(status.getTurn() + 1);
+            playerRepo.save(status);
+        });
+
+        System.out.println("\n+---------------------------------------------------+");
+        System.out.println("|                REPUTATION REPORT                 |");
+        System.out.println("+-------------------+-------------------------------+");
+        System.out.printf("| People            | %-29s |%n", rep.people());
+        System.out.printf("| State             | %-29s |%n", rep.state());
+        System.out.printf("| Underworld        | %-29s |%n", rep.underworld());
+        System.out.println("+-------------------+-------------------------------+");
     }
 
     /**

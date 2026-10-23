@@ -10,6 +10,7 @@ package com.akbori.solution.mugloar.service;
 import com.akbori.solution.mugloar.dto.AdItem;
 import com.akbori.solution.mugloar.dto.BoardOfMessages;
 import com.akbori.solution.mugloar.dto.GameStartResponse;
+import com.akbori.solution.mugloar.dto.ReputationResponse;
 import com.akbori.solution.mugloar.dto.SolutionResponse;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -54,13 +55,39 @@ public class MugloarService {
 
 
     /**
-     * Executes the reputation post-check using our dynamically captured variable.
+     * Executes API call to investigate the dragon's reputation:
+     * Sends a POST message to retrieve the reputation with the people, the state and the underworld.
+     * If the return message is other than success it just writes the information to the console.
+     *
+     * @param gameId Active session ID token
+     * @return ReputationResponse, or null if the request did not succeed
      */
-    public String investigateReputation(String gameId) {
+    public ReputationResponse investigateReputation(String gameId) {
+        // exchange() hands us the raw response so the status is checked before any body mapping
         return restClient.post()
                 .uri("/{gameId}/investigate/reputation", gameId)
-                .retrieve()
-                .body(String.class);
+                .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                .exchange((request, response) -> {
+                    HttpStatusCode status = response.getStatusCode();
+
+                    if (status.value() == 200) {
+                        return response.bodyTo(ReputationResponse.class);
+                    }
+
+                    switch (status.value()) {
+                        case 400 -> System.out.println("❌ Bad request while investigating reputation for game: " + gameId);
+                        case 404 -> System.out.println("❌ Game not found or already over: " + gameId);
+                        case 410 -> System.out.println("❌ Game session has expired: " + gameId);
+                        default -> {
+                            if (status.is5xxServerError()) {
+                                System.out.println("❌ Mugloar server error (" + status.value() + ") while investigating reputation.");
+                            } else {
+                                System.out.println("❌ Unexpected response (" + status.value() + ") while investigating reputation.");
+                            }
+                        }
+                    }
+                    return null;
+                });
     }
 
 

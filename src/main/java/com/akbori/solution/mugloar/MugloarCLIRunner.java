@@ -226,6 +226,8 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.printf("🚀 Dispatching dragon to resolve Ad ID: %s...%n", targetedAd.getAdId());
 
         SolutionResponse res = mugloarService.solveAd(currentGameId, targetedAd.getAdId());
+        // HTTP errors are reported by the service; nothing is logged or marked as used
+        if (res == null) return;
 
         // Log results to DB
         logRepo.save(new MissionLog(currentGameId, targetedAd.getAdId(), targetedAd.getReward(),

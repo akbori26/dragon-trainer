@@ -138,16 +138,39 @@ public class MugloarService {
     /**
      *
      * Sends a POST request to solve a specific advertisement task.
+     * The SolutionResponse is only created when the status is 200,
+     * otherwise it just writes the information to the console.
      *
      * @param gameId Active session ID token
      * @param adId   The unique ID of the target advertisement message
-     * @return SolutionResponse payload detailing updated state matrices
+     * @return SolutionResponse payload detailing updated state matrices, or null if the request did not succeed
      */
     public SolutionResponse solveAd(String gameId, String adId) {
+        // exchange() hands us the raw response so the status is checked before any body mapping
         return restClient.post()
                 .uri("/{gameId}/solve/{adId}", gameId, adId) // Safely injects both path variables in order
-                .retrieve()
-                .body(SolutionResponse.class);
+                .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                .exchange((request, response) -> {
+                    HttpStatusCode status = response.getStatusCode();
+
+                    if (status.value() == 200) {
+                        return response.bodyTo(SolutionResponse.class);
+                    }
+
+                    switch (status.value()) {
+                        case 400 -> System.out.println("❌ Ad " + adId + " could not be solved (unknown or already expired) for game: " + gameId);
+                        case 404 -> System.out.println("❌ Game not found or already over: " + gameId);
+                        case 410 -> System.out.println("❌ Game session has expired: " + gameId);
+                        default -> {
+                            if (status.is5xxServerError()) {
+                                System.out.println("❌ Mugloar server error (" + status.value() + ") while solving ad " + adId + ".");
+                            } else {
+                                System.out.println("❌ Unexpected response (" + status.value() + ") while solving ad " + adId + ".");
+                            }
+                        }
+                    }
+                    return null;
+                });
     }
 
 

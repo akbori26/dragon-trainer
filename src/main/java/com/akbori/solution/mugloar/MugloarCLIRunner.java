@@ -3,12 +3,16 @@ package com.akbori.solution.mugloar;
 import com.akbori.solution.mugloar.dto.*;
 import com.akbori.solution.mugloar.model.*;
 import com.akbori.solution.mugloar.repository.AppConfigRepository;
+import com.akbori.solution.mugloar.repository.CachedAdRepository;
 import com.akbori.solution.mugloar.repository.MissionLogRepository;
 import com.akbori.solution.mugloar.repository.PlayerStatusRepository;
 import com.akbori.solution.mugloar.service.MugloarService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -20,16 +24,22 @@ public class MugloarCLIRunner implements CommandLineRunner {
     private final PlayerStatusRepository playerRepo;
     private final MissionLogRepository logRepo;
     private final AppConfigRepository configRepo;
+    private final CachedAdRepository adRepo;
+
+    private static final DateTimeFormatter TIME_FORMAT =
+            DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
 
     private String currentGameId = null;
-    private List<TaskResponse> cachedAds = new ArrayList<>();
+    private List<CachedAd> cachedAds = new ArrayList<>();
 
     public MugloarCLIRunner(MugloarService mugloarService, PlayerStatusRepository playerRepo,
-                            MissionLogRepository logRepo, AppConfigRepository configRepo) {
+                            MissionLogRepository logRepo, AppConfigRepository configRepo,
+                            CachedAdRepository adRepo) {
         this.mugloarService = mugloarService;
         this.playerRepo = playerRepo;
         this.logRepo = logRepo;
         this.configRepo = configRepo;
+        this.adRepo = adRepo;
     }
 
     @Override
@@ -90,7 +100,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
         currentGameId = res.gameId();
 
         // Save Player status
-        PlayerStatus status = new PlayerStatus(res.gameId(), res.lives(), res.gold(), res.score(), res.highScore());
+        PlayerStatus status = new PlayerStatus(res.gameId(), res.lives(), res.gold(), res.score(), res.highScore(), res.turn());
         playerRepo.save(status);
 
         // Save session link to config table
@@ -102,29 +112,58 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
     }
 
+
+    /**
+     - It first loads cachedAds from the database by currentGameId.                                                                                                                                                       │────────────────────────────────────────────────────────────────────────────────────────
+    - If that comes back empty, it calls mugloarService.getMessageBoard(...) and saves the downloaded ads, using each ad's board position as its index. That way the IDX numbers in handleSolve still match after a      │src/main/java/com/akbori/solution/mugloar/model/CachedAd.java (untracked)
+      restart.                                                                                                                                                                                                           │────────────────────────────────────────────────────────────────────────────────────────
+    - Otherwise it prints "Loaded N contracts from local cache."
+
+
+     */
     private void handleBoard() {
         if (checkSessionMissing()) return;
 
-        System.out.println("\nDownloading active contracts...");
-        cachedAds = mugloarService.getMessageBoard(currentGameId);
+        // Look in the local DB first; only hit the API when this game has no stored ads
+        cachedAds = adRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
+
+        if (cachedAds.isEmpty()) {
+            System.out.println("\nDownloading active contracts...");
+            List<AdItem> downloaded = mugloarService.getMessageBoard(currentGameId);
+            List<CachedAd> rows = new ArrayList<>();
+            for (int i = 0; i < downloaded.size(); i++) {
+                AdItem ad = downloaded.get(i);
+                rows.add(new CachedAd(currentGameId, i, ad, mapRiskCategory(ad.probability())));
+            }
+            cachedAds = adRepo.saveAll(rows);
+        } else {
+            System.out.println("\nLoaded " + cachedAds.size() + " contracts from local cache.");
+        }
 
         if (cachedAds.isEmpty()) {
             System.out.println("⚠️ The board has no current contracts.");
             return;
         }
 
-        System.out.println("\n+-----+--------+---------------------------------------+---------------------------------------------+");
-        System.out.printf("| %-3s | %-6s | %-37s | %-43s |%n", "IDX", "GOLD", "RISK METRIC", "ADMISSION SPECIFICATION MESSAGE");
-        System.out.println("+-----+--------+---------------------------------------+---------------------------------------------+");
+        System.out.println("\n+-----+-------+--------+---------------------------------------+---------------------------------------------+");
+        System.out.printf("| %-3s | %-5s | %-6s | %-37s | %-43s |%n", "IDX", "USED?", "GOLD", "RISK METRIC", "ADMISSION SPECIFICATION MESSAGE");
+        System.out.println("+-----+-------+--------+---------------------------------------+---------------------------------------------+");
+
+        // "IDX (AdId)" labels for the used-ads summary line
+        List<String> usedLabels = new ArrayList<>();
 
         for (int i = 0; i < cachedAds.size(); i++) {
-            TaskResponse ad = cachedAds.get(i);
-            String riskExplain = mapRiskCategory(ad.probability());
-            String truncatedMsg = ad.message().length() > 40 ? ad.message().substring(0, 37) + "..." : ad.message();
+            CachedAd ad = cachedAds.get(i);
+            String riskExplain = mapRiskCategory(ad.getProbability());
+            if (ad.isUsed()) usedLabels.add(i + " (" + ad.getAdId() + ")");
+            String usedFlag = ad.isUsed() ? "USED" : "----";
+            String truncatedMsg = ad.getMessage().length() > 40 ? ad.getMessage().substring(0, 37) + "..." : ad.getMessage();
 
-            System.out.printf("| %-3d | %-6d | %-37s | %-43s |%n", i, ad.reward(), riskExplain, truncatedMsg);
+            System.out.printf("| %-3d | %-5s | %-6d | %-37s | %-43s |%n", i, usedFlag, ad.getReward(), riskExplain, truncatedMsg);
         }
-        System.out.println("+-----+--------+---------------------------------------+---------------------------------------------+");
+        System.out.println("+-----+-------+--------+---------------------------------------+---------------------------------------------+");
+        System.out.printf("🚫 Used ads in this game: %d%s%n", usedLabels.size(),
+                usedLabels.isEmpty() ? "" : " -> " + String.join(", ", usedLabels));
         System.out.println("💡 Strategy: Note down the 'IDX' number, select menu, and enter it to launch your dragon.");
     }
 
@@ -146,22 +185,36 @@ public class MugloarCLIRunner implements CommandLineRunner {
             return;
         }
 
-        TaskResponse targetedAd = cachedAds.get(index);
-        System.out.printf("🚀 Dispatching dragon to resolve Ad ID: %s...%n", targetedAd.adId());
+        CachedAd targetedAd = cachedAds.get(index);
 
-        SolutionResponse res = mugloarService.solveAd(currentGameId, targetedAd.adId());
+        if (targetedAd.isUsed()) {
+            System.out.printf("⚠️ Warning: Ad ID %s has already been used in this game and should not be used a second time.%n", targetedAd.getAdId());
+            System.out.println("   Pick a different ad, or run action [2] to refresh the board.");
+            return;
+        }
+
+        System.out.printf("🚀 Dispatching dragon to resolve Ad ID: %s...%n", targetedAd.getAdId());
+
+        SolutionResponse res = mugloarService.solveAd(currentGameId, targetedAd.getAdId());
 
         // Log results to DB
-        logRepo.save(new MissionLog(currentGameId, targetedAd.adId(), targetedAd.reward(),
-                mapRiskCategory(targetedAd.probability()), res.success(), res.message()));
+        logRepo.save(new MissionLog(currentGameId, targetedAd.getAdId(), targetedAd.getReward(),
+                mapRiskCategory(targetedAd.getProbability()), res.success(), res.message()));
+
+        // Flag the ad as used in the cached board
+        targetedAd.setUsed(true);
+        adRepo.save(targetedAd);
 
         // Update local profile copy
         PlayerStatus status = playerRepo.findById(currentGameId).orElse(new PlayerStatus());
         status.setLives(res.lives());
         status.setGold(res.gold());
         status.setScore(res.score());
-        status.setHighscore(res.highScore());
+        status.setHighScore(res.highScore());
+        status.setTurn(res.turn());
         playerRepo.save(status);
+
+        System.out.printf("⚠️ Ad ID %s is now marked as used and should not be used a second time.%n", targetedAd.getAdId());
 
         System.out.println("\n+--------------------------------------------------------------------------------------------+");
         System.out.printf("| OUTCOME: %-81s |%n", res.success() ? "🏆 SUCCESSFUL EXTRACTION" : "💀 CRITICAL FAILURE");
@@ -178,11 +231,12 @@ public class MugloarCLIRunner implements CommandLineRunner {
             System.out.println("\n+---------------------------------------------------+");
             System.out.println("|        LOCAL METRIC VENEER (PULLED FROM SQLITE)   |");
             System.out.println("+-------------------+-------------------------------+");
+            System.out.printf("| Turn in the game  | %29s  |%n", status.getTurn());
             System.out.printf("| Active Game ID    | %-29s |%n", status.getGameId());
             System.out.printf("| Remaining Vitality| %-29s |%n", status.getLives() + " ❤️ " + (status.getLives() == 0 ? "(DEAD)" : "(ACTIVE)"));
             System.out.printf("| Treasure Reserve  | %-29s |%n", status.getGold() + " 🪙 coins");
             System.out.printf("| Dynamic Score     | %-29d |%n", status.getScore());
-            System.out.printf("| Top Record Tier   | %-29d |%n", status.getHighscore());
+            System.out.printf("| Top Record Tier   | %-29d |%n", status.getHighScore());
             System.out.println("+-------------------+-------------------------------+");
         }, () -> System.out.println("⚠️ Warning: Data record entry matching this ID was not found in SQLite."));
     }
@@ -204,7 +258,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
             String outcome = log.isSuccess() ? "SUCCESS" : "FAIL";
             String truncMsg = log.getServerMessage().length() > 40 ? log.getServerMessage().substring(0, 40) + "..." : log.getServerMessage();
             System.out.printf("| %-8s | %-20s | %-6d | %-9s | %-43s |%n",
-                    log.getTimestamp().toLocalTime().toString().substring(0, 8),
+                    TIME_FORMAT.format(Instant.ofEpochMilli(log.getTimestamp())),
                     log.getAdId(), log.getReward(), outcome, truncMsg);
         }
         System.out.println("+----------+----------------------+--------+-----------+---------------------------------------------+");

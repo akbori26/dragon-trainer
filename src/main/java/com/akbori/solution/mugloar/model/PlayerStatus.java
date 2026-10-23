@@ -9,12 +9,15 @@ public class PlayerStatus {
     private int lives;
     private int gold;
     private int score;
-    private int highscore;
+    private int highScore;
+    private int turn;
+
 
     // Constructors, Getters, Setters
     public PlayerStatus() {}
-    public PlayerStatus(String gameId, int lives, int gold, int score, int highscore) {
-        this.gameId = gameId; this.lives = lives; this.gold = gold; this.score = score; this.highscore = highscore;
+    public PlayerStatus(String gameId, int lives, int gold, int score, int highScore, int turn) {
+        this.gameId = gameId; this.lives = lives; this.gold = gold; this.score = score; this.highScore = highScore;
+        this.turn = turn;
     }
     public String getGameId() { return gameId; }
     public void setGameId(String gameId) { this.gameId = gameId; }
@@ -24,6 +27,13 @@ public class PlayerStatus {
     public void setGold(int gold) { this.gold = gold; }
     public int getScore() { return score; }
     public void setScore(int score) { this.score = score; }
-    public int getHighscore() { return highscore; }
-    public void setHighscore(int highscore) { this.highscore = highscore; }
+    public int getHighScore() { return highScore; }
+    public void setHighScore(int highScore) { this.highScore = highScore; }
+    public int getTurn() {
+        return turn;
+    }
+    public void setTurn(int turn) {
+        this.turn = turn;
+    }
+
 }

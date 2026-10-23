@@ -1,7 +1,6 @@
 package com.akbori.solution.mugloar.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
 
 @Entity
 public class MissionLog {
@@ -13,7 +12,7 @@ public class MissionLog {
     private String riskCategory;
     private boolean success;
     private String serverMessage;
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private long timestamp = System.currentTimeMillis(); // epoch millis
 
     // Constructors, Getters, Setters
     public MissionLog() {}
@@ -27,5 +26,8 @@ public class MissionLog {
     public String getRiskCategory() { return riskCategory; }
     public boolean isSuccess() { return success; }
     public String getServerMessage() { return serverMessage; }
-    public LocalDateTime getTimestamp() { return timestamp; }
+    public long getTimestamp() { return timestamp; }
 }
+
+
+

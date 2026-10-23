@@ -1,6 +1,6 @@
 package com.akbori.solution.mugloar.dto;
 
-public record TaskResponse(
+public record AdItem(
         String adId,
         String message,
         int reward,

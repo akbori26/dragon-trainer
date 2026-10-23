@@ -7,16 +7,18 @@ package com.akbori.solution.mugloar.service;
     The client automatically reads the server's response body directly into your structural Java Record schema object.
 
 */
-import com.akbori.solution.mugloar.dto.TaskResponse;
-import com.akbori.solution.mugloar.dto.BoardResponse;
+import com.akbori.solution.mugloar.dto.AdItem;
+import com.akbori.solution.mugloar.dto.BoardOfMessages;
 import com.akbori.solution.mugloar.dto.GameStartResponse;
 import com.akbori.solution.mugloar.dto.SolutionResponse;
-import org.jspecify.annotations.Nullable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -63,23 +65,51 @@ public class MugloarService {
 
 
     /**
-     Executes API call and download the active tasks from the board:
+     * Executes API call and download the active ads from the message board:
+     * Sends a GET message to retrieve all the task from the message board
+     * If the return message is other than success it just writes the information to the console.
+     *
+     * @param gameId Active session ID token
+     * @return list of AdItems
     */
-    public List<TaskResponse> getMessageBoard(String gameId) {
-        List<TaskResponse>tasks = restClient.get()
+    public List<AdItem> getMessageBoard(String gameId) {
+        // exchange() hands us the raw response so the status is checked before any body mapping
+        List<AdItem> tasks = restClient.get()
                 .uri("/{gameId}/messages", gameId)
                 .header(HttpHeaders.CONTENT_TYPE, "application/json") // 2. Headers
-                .retrieve()
-                .body(new ParameterizedTypeReference<List<TaskResponse>>() {});
+                .exchange((request, response) -> {
+                    HttpStatusCode status = response.getStatusCode();
 
-        //List<TaskResponse> taskList
+                    if (status.value() == 200) {
+                        return response.bodyTo(new ParameterizedTypeReference<List<AdItem>>() {});
+                    }
 
-        BoardResponse response = new BoardResponse(tasks);
-        return response != null ? response.messages() : List.of();
+                    switch (status.value()) {
+                        case 400 -> System.out.println("❌ Bad request while fetching the message board for game: " + gameId);
+                        case 404 -> System.out.println("❌ Game not found or already over: " + gameId);
+                        case 410 -> System.out.println("❌ Game session has expired: " + gameId);
+                        default -> {
+                            if (status.is5xxServerError()) {
+                                System.out.println("❌ Mugloar server error (" + status.value() + ") while fetching the message board.");
+                            } else {
+                                System.out.println("❌ Unexpected response (" + status.value() + ") while fetching the message board.");
+                            }
+                        }
+                    }
+                    return null;
+                });
+
+        if (tasks == null) {
+            return List.of();
+        }
+
+        BoardOfMessages board = new BoardOfMessages(tasks);
+        return board.messages();
     }
 
 
     /**
+     *
      * Sends a POST request to solve a specific advertisement task.
      *
      * @param gameId Active session ID token
@@ -92,6 +122,9 @@ public class MugloarService {
                 .retrieve()
                 .body(SolutionResponse.class);
     }
+
+
+
 
 
 

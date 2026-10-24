@@ -5,6 +5,7 @@ import com.akbori.solution.mugloar.model.*;
 import com.akbori.solution.mugloar.repository.*;
 import com.akbori.solution.mugloar.service.MugloarService;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -18,6 +19,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
+// On by default; tests set mugloar.cli.enabled=false so the menu loop doesn't block waiting for input
+@ConditionalOnProperty(name = "mugloar.cli.enabled", havingValue = "true", matchIfMissing = true)
 public class MugloarCLIRunner implements CommandLineRunner {
 
     private final MugloarService mugloarService;

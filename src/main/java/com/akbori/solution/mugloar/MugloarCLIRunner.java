@@ -484,7 +484,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
         }
 
         if (status.getGold() < targetedItem.getCost()) {
-            System.out.printf("⚠️ Warnadd ing: Market Item ID %s is so expensive for your budget. ypu have only %s Gold at the moment%n", targetedItem.getItemId(), status.getGold());
+            System.out.printf("⚠️ Warning: Market Item ID %s is so expensive for your budget. You have only %s Gold at the moment%n", targetedItem.getItemId(), status.getGold());
             System.out.println("   Pick a different market item, or wait until you get enough gold.");
             return;
         }

@@ -230,7 +230,7 @@ public class MugloarService {
     public TradeResponse buyItem(String gameId, String itemId) {
         // exchange() hands us the raw response so the status is checked before any body mapping
         return restClient.post()
-                .uri("/{gameId}/shop/{itemId}", gameId, itemId) // Safely injects both path variables in order
+                .uri("/{gameId}/shop/buy/{itemId}", gameId, itemId) // Safely injects both path variables in order
                 .header(HttpHeaders.CONTENT_TYPE, "application/json")
                 .exchange((request, response) -> {
                     HttpStatusCode status = response.getStatusCode();

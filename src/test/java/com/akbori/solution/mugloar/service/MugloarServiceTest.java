@@ -2,6 +2,7 @@ package com.akbori.solution.mugloar.service;
 
 import com.akbori.solution.mugloar.dto.AdItem;
 import com.akbori.solution.mugloar.dto.GameStartResponse;
+import com.akbori.solution.mugloar.dto.SolutionResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -91,6 +92,51 @@ class MugloarServiceTest {
         assertThat(output).contains(expectedLog);
         server.verify();
 
+    }
+
+    @Test
+    void solveAdReturnsParsedSolutionResponse() {
+        String gameId = "abc123";
+        String adId = "XFyAyerI";
+
+        server.expect(requestTo("https://dragonsofmugloar.com/api/v2/" + gameId + "/solve/" + adId))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("""
+                        {"success":true,"lives":3,"gold":13,"score":10,
+                         "highScore":0,"turn":1,"message":"You successfully solved the mission!"}
+                        """, MediaType.APPLICATION_JSON));
+
+        SolutionResponse response = mugloarService.solveAd(gameId, adId);
+
+        assertThat(response.success()).isTrue();
+        assertThat(response.gold()).isEqualTo(13);
+        assertThat(response.score()).isEqualTo(10);
+        assertThat(response.turn()).isEqualTo(1);
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "400, Ad XFyAyerI could not be solved (unknown or already expired)",
+            "404, Game not found or already over",
+            "410, Game session has expired",
+            "500, Mugloar server error (500) while solving ad XFyAyerI",
+            "503, Mugloar server error (503) while solving ad XFyAyerI",
+            "418, Unexpected response (418) while solving ad XFyAyerI"
+    })
+    void solveAdReturnsNullOnErrorStatus(int status, String expectedLog, CapturedOutput output) {
+        String gameId = "abc123";
+        String adId = "XFyAyerI";
+
+        server.expect(requestTo("https://dragonsofmugloar.com/api/v2/" + gameId + "/solve/" + adId))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.valueOf(status)));
+
+        SolutionResponse response = mugloarService.solveAd(gameId, adId);
+
+        assertThat(response).isNull();
+        assertThat(output).contains(expectedLog);
+        server.verify();
     }
 
 }

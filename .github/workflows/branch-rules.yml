@@ -1,0 +1,33 @@
+# Fails a pull request that breaks the branch flow (see .github/scripts/check-merge-rule.sh):
+#   feature/<name>  ->  develop
+#   develop         ->  release/BGBNK_<yyyyMMdd>_<NNN>
+#
+# It checks pull requests into develop or a release branch, and pull requests from a feature branch
+# into anything else. To actually block such merges, make "Branch rules / check" a required status
+# check in the branch protection rules for develop and release/*.
+
+name: Branch rules
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]   # "edited" covers a changed base branch
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: >-
+      github.base_ref == 'develop' ||
+      startsWith(github.base_ref, 'release/') ||
+      startsWith(github.head_ref, 'feature/')
+    runs-on: ubuntu-latest
+    env:
+      SOURCE: ${{ github.head_ref }}
+      TARGET: ${{ github.base_ref }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Check the branch rule
+        run: .github/scripts/check-merge-rule.sh "$SOURCE" "$TARGET"

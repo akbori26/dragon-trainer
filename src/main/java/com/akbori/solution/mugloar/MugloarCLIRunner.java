@@ -342,7 +342,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
             System.out.println("\n+---------------------------------------------------+");
             System.out.println("|        LOCAL METRIC VENEER (PULLED FROM SQLITE)   |");
             System.out.println("+-------------------+-------------------------------+");
-            System.out.printf("| Turn in the game  | %29s  |%n", status.getTurn());
+            System.out.printf("| Turn in the game  | %-29d |%n", status.getTurn());
             System.out.printf("| Active Game ID    | %-29s |%n", status.getGameId());
             System.out.printf("| Remaining Vitality| %-29s |%n", status.getLives() + " ❤️ " + (status.getLives() == 0 ? "(DEAD)" : "(ACTIVE)"));
             System.out.printf("| Treasure Reserve  | %-29s |%n", status.getGold() + " 🪙 coins");

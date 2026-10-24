@@ -165,4 +165,20 @@ class MugloarCLIRunnerGameOverTest {
 
         assertThat(output.getOut()).doesNotContain(ONE_LIFE, GAME_OVER);
     }
+
+    @Test
+    void statusTableRowsAllHaveTheSameWidth(CapturedOutput output) {
+        givenLives(3);
+
+        ReflectionTestUtils.invokeMethod(runner, "handleStatus");
+
+        // Every border and row of the table is padded to the border's width; printf pads by
+        // String.length(), so comparing lengths catches a row whose format string is off
+        List<String> table = output.getOut().lines()
+                .filter(line -> line.startsWith("|") || line.startsWith("+"))
+                .toList();
+        assertThat(table).hasSizeGreaterThan(5);
+        assertThat(table).extracting(String::length).containsOnly(table.get(0).length());
+        assertThat(table).anyMatch(line -> line.startsWith("| Turn in the game  | 5 "));
+    }
 }

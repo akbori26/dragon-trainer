@@ -36,7 +36,6 @@ public class MugloarCLIRunner implements CommandLineRunner {
             DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
 
     private String currentGameId = null;
-    private List<CachedAd> cachedAds = new ArrayList<>();
     private List<CachedItem> cachedItems = new ArrayList<>();
 
     /**
@@ -218,9 +217,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
         // Current turn from player_status; expiresIn is counted down from the turn the board was downloaded
         int currentTurn = playerRepo.findById(currentGameId).map(PlayerStatus::getTurn).orElse(0);
 
-        cachedAds = adRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
+        List<CachedAd> ads = adRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
 
-        if (cachedAds.isEmpty()) {
+        if (ads.isEmpty()) {
             System.out.println("⚠️ No contracts stored for this game. Run action [7] to download them.");
             return;
         }
@@ -232,8 +231,8 @@ public class MugloarCLIRunner implements CommandLineRunner {
         // "IDX (AdId)" labels for the used-ads summary line
         List<String> usedLabels = new ArrayList<>();
 
-        for (int i = 0; i < cachedAds.size(); i++) {
-            CachedAd ad = cachedAds.get(i);
+        for (int i = 0; i < ads.size(); i++) {
+            CachedAd ad = ads.get(i);
             int idx = i + 1; // IDX shown to the user starts from 1
             String riskExplain = mapRiskCategory(ad.getProbability());
             if (ad.isUsed()) usedLabels.add(idx + " (" + ad.getAdId() + ")");
@@ -259,24 +258,27 @@ public class MugloarCLIRunner implements CommandLineRunner {
      */
     private void handleSolve(Scanner scanner) {
         if (checkSessionMissing() || checkGameOver()) return;
-        if (cachedAds.isEmpty()) {
-            System.out.println("❌ No cached assignments available. Run action [2] to scan the board first.");
+        // Read the board from the DB for the current game, in the same order View Board shows it,
+        // so ads from a previous game are never used and the board works right after a resume
+        List<CachedAd> ads = adRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
+        if (ads.isEmpty()) {
+            System.out.println("❌ No contracts stored for this game. Run action [7] to download them.");
             return;
         }
 
-        System.out.printf("\nEnter target ad index number [1-%d]: ", cachedAds.size());
+        System.out.printf("\nEnter target ad index number [1-%d]: ", ads.size());
         String input = scanner.nextLine().trim();
         int index;
         try {
             // IDX on the board starts from 1, the list is 0-based
             index = Integer.parseInt(input) - 1;
-            if (index < 0 || index >= cachedAds.size()) throw new IndexOutOfBoundsException();
+            if (index < 0 || index >= ads.size()) throw new IndexOutOfBoundsException();
         } catch (Exception e) {
             System.out.println("❌ Invalid number index entry.");
             return;
         }
 
-        CachedAd targetedAd = cachedAds.get(index);
+        CachedAd targetedAd = ads.get(index);
 
         if (targetedAd.isUsed()) {
             System.out.printf("⚠️ Warning: Ad ID %s has already been used in this game and should not be used a second time.%n", targetedAd.getAdId());

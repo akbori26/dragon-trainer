@@ -26,6 +26,7 @@ import java.util.Scanner;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -63,7 +64,9 @@ class MugloarCLIRunnerGameOverTest {
 
     private void givenBoardWithOneAd() {
         AdItem ad = new AdItem("ad-1", "Help a farmer", 20, 5, null, "Piece of cake");
-        ReflectionTestUtils.setField(runner, "cachedAds", List.of(new CachedAd(GAME_ID, 0, ad, "🟢 SAFE", 5)));
+        // lenient: the game-over tests stop before the board is read
+        lenient().when(adRepo.findByGameIdOrderByDisplayIndexAsc(GAME_ID))
+                .thenReturn(List.of(new CachedAd(GAME_ID, 0, ad, "🟢 SAFE", 5)));
     }
 
     // --- Blocked at 0 lives ---

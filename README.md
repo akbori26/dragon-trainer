@@ -124,6 +124,7 @@ src/main/resources/data/
 | `MugloarServiceLiveTest` | The same endpoints against the real Mugloar server (needs network; tagged `live`) |
 | `MugloarCLIRunnerBuyingTest` | The Buy Item action, with all collaborators mocked |
 | `MugloarCLIRunnerGameOverTest` | Actions blocked at 0 lives, and the low-health and game-over warnings |
+| `MugloarCLIRunnerSolveTest` | Solve Ad always uses the current game's stored board, including after a new game or a resume |
 | `MugloarCLIRunnerErrorHandlingTest` | Network, response and database errors are reported without ending the terminal |
 | `*RepositoryTest` | Each repository, against a throwaway in-memory SQLite database |
 | `DragonTrainerApplicationTests` | The Spring context starts. It sets `mugloar.cli.enabled=false` so the menu doesn't wait for input |

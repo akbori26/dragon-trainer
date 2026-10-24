@@ -32,20 +32,36 @@ public class MugloarService {
 
     /**
      * Sends a POST request to start a new game loop.
-     * Extracts and returns the dynamic gameId string.
+     * If the return message is other than success, or the body has no gameId,
+     * it just writes the information to the console.
+     *
+     * @return GameStartResponse with the new gameId, or null if the request did not succeed
      */
     public GameStartResponse startNewGame() {
-
+        // exchange() hands us the raw response so the status is checked before any body mapping
         GameStartResponse response = restClient.post()
                 .uri("/game/start")
                 .header(HttpHeaders.CONTENT_TYPE, "application/json") // 2. Headers
-                .retrieve()
-                .body(GameStartResponse.class); // Automatically maps JSON to the Record
+                .exchange((request, res) -> {
+                    HttpStatusCode status = res.getStatusCode();
 
-        if (response != null && response.gameId() != null) {
-            return response;
+                    if (status.value() == 200) {
+                        return res.bodyTo(GameStartResponse.class);
+                    }
+
+                    if (status.is5xxServerError()) {
+                        System.out.println("❌ Mugloar server error (" + status.value() + ") while starting a new game.");
+                    } else {
+                        System.out.println("❌ Unexpected response (" + status.value() + ") while starting a new game.");
+                    }
+                    return null;
+                });
+
+        if (response != null && response.gameId() == null) {
+            System.out.println("❌ The server did not return a game ID for the new game.");
+            return null;
         }
-        throw new RuntimeException("Failed to retrieve a valid game session ID.");
+        return response;
     }
 
 

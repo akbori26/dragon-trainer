@@ -73,6 +73,24 @@ Each ad's probability text is shown as a risk category, from safest to deadliest
 Some ads arrive encrypted, in Base64 or ROT13. The client decodes them when it downloads the board,
 so they show and solve like any other ad.
 
+### Game over and warnings
+- At **1 life**, a warning suggests buying a Healing potion. It appears after solving, after buying and in Check Status.
+- At **0 lives**, the game is over. Solve Ad, Reputation, Download Ads and Buy Item are blocked, because the server
+  rejects every request for a finished game. Board, Status, Logs and Market still show the stored data.
+  Start a new game with option `1`.
+
+### When something goes wrong
+A failed action prints a message and returns you to the menu. The terminal never quits on an error.
+
+| Problem | What you see |
+|---|---|
+| No internet, a timeout or DNS failure | 🌐 Could not reach the Mugloar server. Check your internet connection and try again. |
+| The server answers with an error status (400, 404, 410, 5xx) | A message naming the action and the status, e.g. ❌ Mugloar server error (503) while starting a new game. |
+| The server's response can't be read | ❌ The Mugloar server sent a response that could not be read: … |
+| Any other failure, such as a database error | ❌ The action failed: … |
+
+If starting a new game fails, the current game stays selected.
+
 ## Project layout
 ```
 src/main/java/com/akbori/solution/mugloar/
@@ -106,6 +124,7 @@ src/main/resources/data/
 | `MugloarServiceLiveTest` | The same endpoints against the real Mugloar server (needs network; tagged `live`) |
 | `MugloarCLIRunnerBuyingTest` | The Buy Item action, with all collaborators mocked |
 | `MugloarCLIRunnerGameOverTest` | Actions blocked at 0 lives, and the low-health and game-over warnings |
+| `MugloarCLIRunnerErrorHandlingTest` | Network, response and database errors are reported without ending the terminal |
 | `*RepositoryTest` | Each repository, against a throwaway in-memory SQLite database |
 | `DragonTrainerApplicationTests` | The Spring context starts. It sets `mugloar.cli.enabled=false` so the menu doesn't wait for input |
 

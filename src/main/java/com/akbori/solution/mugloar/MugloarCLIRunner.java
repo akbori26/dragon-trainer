@@ -7,6 +7,8 @@ import com.akbori.solution.mugloar.service.MugloarService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -80,6 +82,23 @@ public class MugloarCLIRunner implements CommandLineRunner {
             System.out.print("\nSelect an action [1-10]: ");
             String command = scanner.nextLine().trim();
 
+            if (command.equals("10")) {
+                System.out.println("\nSaving application state configuration... Goodbye!");
+                System.exit(0);
+            }
+            handleCommand(command, scanner);
+        }
+    }
+
+    /**
+     * Runs one menu action. Any exception it throws is reported and swallowed,
+     * so a network outage or a database error ends only that action, not the whole terminal.
+     *
+     * @param command The menu number the user typed
+     * @param scanner Console input, for actions that ask for an index
+     */
+    private void handleCommand(String command, Scanner scanner) {
+        try {
             switch (command) {
                 case "1" -> handleStart();
                 case "2" -> handleBoard();
@@ -90,12 +109,14 @@ public class MugloarCLIRunner implements CommandLineRunner {
                 case "7" -> handleDownloadAds();
                 case "8" -> handleMarketBoard();
                 case "9" -> handleBuying(scanner);
-                case "10" -> {
-                    System.out.println("\nSaving application state configuration... Goodbye!");
-                    System.exit(0);
-                }
                 default -> System.out.println("❌ Invalid option. Please input a number from 1 to 10.");
             }
+        } catch (ResourceAccessException e) {
+            System.out.println("🌐 Could not reach the Mugloar server. Check your internet connection and try again.");
+        } catch (RestClientException e) {
+            System.out.println("❌ The Mugloar server sent a response that could not be read: " + e.getMessage());
+        } catch (RuntimeException e) {
+            System.out.println("❌ The action failed: " + e.getMessage());
         }
     }
 
@@ -126,6 +147,8 @@ public class MugloarCLIRunner implements CommandLineRunner {
     private void handleStart() {
         System.out.println("\nConnecting to game server for a new instance...");
         GameStartResponse res = mugloarService.startNewGame();
+        // HTTP errors are reported by the service; the current game stays as it was
+        if (res == null) return;
         currentGameId = res.gameId();
 
         // Save Player status

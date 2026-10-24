@@ -51,6 +51,35 @@ class MugloarServiceTest {
         server.verify();
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "500, Mugloar server error (500) while starting a new game",
+            "503, Mugloar server error (503) while starting a new game",
+            "400, Unexpected response (400) while starting a new game"
+    })
+    void startNewGameReturnsNullOnErrorStatus(int status, String expectedLog, CapturedOutput output) {
+        server.expect(requestTo("https://dragonsofmugloar.com/api/v2/game/start"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.valueOf(status)));
+
+        assertThat(mugloarService.startNewGame()).isNull();
+        assertThat(output).contains(expectedLog);
+        server.verify();
+    }
+
+    @Test
+    void startNewGameReturnsNullWhenBodyHasNoGameId(CapturedOutput output) {
+        server.expect(requestTo("https://dragonsofmugloar.com/api/v2/game/start"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("""
+                        {"lives":3,"gold":0,"level":0,"score":0,"highScore":0,"turn":0}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThat(mugloarService.startNewGame()).isNull();
+        assertThat(output).contains("did not return a game ID");
+        server.verify();
+    }
+
 
     @Test
     void getMessageBoardReturnsParsedBoardOfMessages(){

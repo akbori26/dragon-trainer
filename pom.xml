@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.akbori.solution</groupId>
-	<artifactId>dragon-trainer</artifactId>
+	<artifactId>mugloar</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>
@@ -51,6 +51,11 @@
 			<groupId>org.xerial</groupId>
 			<artifactId>sqlite-jdbc</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-community-dialects</artifactId>
+			<!-- Omit the <version> tag if you use spring-boot-starter-parent to let it auto-manage the version -->
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

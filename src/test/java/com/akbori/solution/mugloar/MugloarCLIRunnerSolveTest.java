@@ -14,6 +14,7 @@ import com.akbori.solution.mugloar.service.MugloarService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -121,6 +122,27 @@ class MugloarCLIRunnerSolveTest {
         solve("1");
 
         verify(mugloarService).solveAd(NEW_GAME, "new-ad");
+    }
+
+    @Test
+    void missingStatusIsCreatedForTheCurrentGameAfterASolve(CapturedOutput output) {
+        ReflectionTestUtils.setField(runner, "currentGameId", NEW_GAME);
+        when(adRepo.findByGameIdOrderByDisplayIndexAsc(NEW_GAME)).thenReturn(List.of(ad(NEW_GAME, "new-ad")));
+        when(playerRepo.findById(NEW_GAME)).thenReturn(Optional.empty());
+        when(mugloarService.solveAd(NEW_GAME, "new-ad")).thenReturn(new SolutionResponse(true, 2, 35, 40, 90, 1, "Done"));
+
+        solve("1");
+
+        ArgumentCaptor<PlayerStatus> saved = ArgumentCaptor.forClass(PlayerStatus.class);
+        verify(playerRepo).save(saved.capture());
+        // A null game ID is what made the real repository refuse the save
+        assertThat(saved.getValue().getGameId()).isEqualTo(NEW_GAME);
+        assertThat(saved.getValue().getLives()).isEqualTo(2);
+        assertThat(saved.getValue().getGold()).isEqualTo(35);
+        assertThat(saved.getValue().getScore()).isEqualTo(40);
+        assertThat(saved.getValue().getHighScore()).isEqualTo(90);
+        assertThat(saved.getValue().getTurn()).isEqualTo(1);
+        assertThat(output.getOut()).contains("SUCCESSFUL EXTRACTION");
     }
 
     @Test

@@ -308,8 +308,12 @@ public class MugloarCLIRunner implements CommandLineRunner {
         targetedAd.setUsed(true);
         adRepo.save(targetedAd);
 
-        // Update local profile copy
-        PlayerStatus status = playerRepo.findById(currentGameId).orElse(new PlayerStatus());
+        // Update local profile copy; if no row is stored, create it for this game so the save can't fail on a null ID
+        PlayerStatus status = playerRepo.findById(currentGameId).orElseGet(() -> {
+            PlayerStatus created = new PlayerStatus();
+            created.setGameId(currentGameId);
+            return created;
+        });
         status.setLives(res.lives());
         status.setGold(res.gold());
         status.setScore(res.score());

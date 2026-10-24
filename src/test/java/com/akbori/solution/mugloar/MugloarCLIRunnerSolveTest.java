@@ -96,6 +96,33 @@ class MugloarCLIRunnerSolveTest {
         verify(mugloarService).solveAd(NEW_GAME, "new-ad");
     }
 
+    // ad() is downloaded at turn 0 with expiresIn 5, so it has 0 turns left at turn 5.
+    // Checked against the live server: an ad is still listed with 1 turn left and rejected (HTTP 400) at 0.
+
+    @Test
+    void expiredAdIsNotSentToTheServer(CapturedOutput output) {
+        ReflectionTestUtils.setField(runner, "currentGameId", NEW_GAME);
+        when(adRepo.findByGameIdOrderByDisplayIndexAsc(NEW_GAME)).thenReturn(List.of(ad(NEW_GAME, "new-ad")));
+        when(playerRepo.findById(NEW_GAME)).thenReturn(Optional.of(new PlayerStatus(NEW_GAME, 3, 0, 0, 0, 5)));
+
+        solve("1");
+
+        verify(mugloarService, never()).solveAd(anyString(), anyString());
+        assertThat(output.getOut()).contains("Ad ID new-ad has expired", "run action [7] to download a new board");
+    }
+
+    @Test
+    void adWithOneTurnLeftCanStillBeSolved() {
+        ReflectionTestUtils.setField(runner, "currentGameId", NEW_GAME);
+        when(adRepo.findByGameIdOrderByDisplayIndexAsc(NEW_GAME)).thenReturn(List.of(ad(NEW_GAME, "new-ad")));
+        when(playerRepo.findById(NEW_GAME)).thenReturn(Optional.of(new PlayerStatus(NEW_GAME, 3, 0, 0, 0, 4)));
+        when(mugloarService.solveAd(NEW_GAME, "new-ad")).thenReturn(new SolutionResponse(true, 3, 20, 20, 20, 5, "Done"));
+
+        solve("1");
+
+        verify(mugloarService).solveAd(NEW_GAME, "new-ad");
+    }
+
     @Test
     void emptyStoredBoardPointsUserToDownloadAds(CapturedOutput output) {
         ReflectionTestUtils.setField(runner, "currentGameId", NEW_GAME);

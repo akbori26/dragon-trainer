@@ -251,7 +251,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
     /**
      * Asks for a board IDX and sends the dragon to solve that ad.
-     * Refuses ads already flagged as used. On a solve, logs the result to mission_log,
+     * Refuses ads already flagged as used or already expired. On a solve, logs the result to mission_log,
      * marks the ad as used in cached_ad and updates the stored player status.
      *
      * @param scanner Console input used to read the ad index
@@ -282,6 +282,14 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
         if (targetedAd.isUsed()) {
             System.out.printf("⚠️ Warning: Ad ID %s has already been used in this game and should not be used a second time.%n", targetedAd.getAdId());
+            System.out.println("   Pick a different ad, or run action [7] to download a new board.");
+            return;
+        }
+
+        // Same countdown View Board shows; the server stops accepting an ad once it reaches 0
+        int currentTurn = playerRepo.findById(currentGameId).map(PlayerStatus::getTurn).orElse(0);
+        if (targetedAd.remainingExpiresIn(currentTurn) <= 0) {
+            System.out.printf("⚠️ Warning: Ad ID %s has expired and can no longer be solved.%n", targetedAd.getAdId());
             System.out.println("   Pick a different ad, or run action [7] to download a new board.");
             return;
         }

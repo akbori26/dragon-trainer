@@ -305,6 +305,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
             System.out.printf("| Active Game ID    | %-29s |%n", status.getGameId());
             System.out.printf("| Remaining Vitality| %-29s |%n", status.getLives() + " ❤️ " + (status.getLives() == 0 ? "(DEAD)" : "(ACTIVE)"));
             System.out.printf("| Treasure Reserve  | %-29s |%n", status.getGold() + " 🪙 coins");
+            System.out.printf("| Dragon Level      | %-29d |%n", status.getLevel());
             System.out.printf("| Dynamic Score     | %-29d |%n", status.getScore());
             System.out.printf("| Top Record Tier   | %-29d |%n", status.getHighScore());
             System.out.println("+-------------------+-------------------------------+");
@@ -517,6 +518,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.println("+--------------------------------------------------------------------------------------------+");
         System.out.printf("| Details: %-81s |%n", serverMessage);
         System.out.printf("| Wallet Dynamics: %-25s | Health Remainder: %-25s |%n", res.gold() + " Gold coins", res.lives() + " Lives left");
+        System.out.printf("| Dragon Level: %-76s |%n", res.level());
         System.out.println("+--------------------------------------------------------------------------------------------+");
     }
 

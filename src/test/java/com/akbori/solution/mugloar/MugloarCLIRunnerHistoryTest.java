@@ -68,6 +68,33 @@ class MugloarCLIRunnerHistoryTest {
     }
 
     @Test
+    void failedPurchaseShowsNoGoldSpent(CapturedOutput output) {
+        when(logRepo.findByGameIdOrderByIdDesc(GAME_ID)).thenReturn(List.of(
+                new MissionLog(EntryType.PURCHASE, GAME_ID, "cs", 100, null, false, "Could not buy Claw Sharpening for 100 gold")));
+
+        showHistory();
+
+        assertThat(rowFor(output, "cs")).contains("PURCHASE", "| 0      |", "FAIL").doesNotContain("-100");
+    }
+
+    @Test
+    void entriesShowTheirDateAndTimeInAnAlignedTable(CapturedOutput output) {
+        when(logRepo.findByGameIdOrderByIdDesc(GAME_ID)).thenReturn(List.of(
+                new MissionLog(EntryType.PURCHASE, GAME_ID, "hpot", 50, null, true, "Bought Healing potion for 50 gold"),
+                new MissionLog(GAME_ID, "ad-1", 20, "🟢 SAFE", false, "You were defeated")));
+
+        showHistory();
+
+        // e.g. "| 2026-10-24 17:58 | MISSION  | ..."
+        assertThat(rowFor(output, "ad-1")).matches("\\| \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2} \\| .*");
+        List<String> table = output.getOut().lines()
+                .filter(line -> line.startsWith("|") || line.startsWith("+"))
+                .toList();
+        assertThat(table).hasSize(6);
+        assertThat(table).extracting(String::length).containsOnly(table.get(0).length());
+    }
+
+    @Test
     void entryWithoutMessageIsShownWithoutFailing(CapturedOutput output) {
         when(logRepo.findByGameIdOrderByIdDesc(GAME_ID)).thenReturn(List.of(
                 new MissionLog(GAME_ID, "ad-2", 15, "🟡 LIKELY", false, null)));

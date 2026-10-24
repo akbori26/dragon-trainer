@@ -177,7 +177,7 @@ class MugloarCLIRunnerBuyingTest {
         buy("1");
 
         verify(mugloarService, never()).buyItem(anyString(), anyString());
-        assertThat(output.getOut()).contains("there is no status for your dragon");
+        assertThat(output.getOut()).contains("No player status is stored for this game", "Solve an ad first with action [3]");
     }
 
     @Test

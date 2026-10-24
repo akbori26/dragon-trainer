@@ -33,8 +33,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
     private final CachedAdRepository adRepo;
     private final CachedItemRepository marketRepo;
 
+    // Date and time, so View Logs entries from different days can be told apart
     private static final DateTimeFormatter TIME_FORMAT =
-            DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
     // ANSI colors are left out when NO_COLOR is set (https://no-color.org)
     private static final boolean COLORS_ON = System.getenv("NO_COLOR") == null;
@@ -380,19 +381,24 @@ public class MugloarCLIRunner implements CommandLineRunner {
             return;
         }
 
-        String border = "+----------+----------+----------------------+--------+-----------+---------------------------------------------+";
+        String border = "+------------------+----------+----------------------+--------+-----------+---------------------------------------------+";
         System.out.println("\n" + border);
-        System.out.printf("| %-8s | %-8s | %-20s | %-6s | %-9s | %-43s |%n", "TIME", "TYPE", "AD / ITEM", "GOLD", "RESULT", "SERVER VERDICT LOG");
+        System.out.printf("| %-16s | %-8s | %-20s | %-6s | %-9s | %-43s |%n", "TIME", "TYPE", "AD / ITEM", "GOLD", "RESULT", "SERVER VERDICT LOG");
         System.out.println(border);
 
         for (MissionLog log : logs) {
             boolean purchase = log.getEntryType() == EntryType.PURCHASE;
-            // Missions earn their reward; purchases spend the item cost
-            String gold = (purchase ? "-" : "+") + log.getReward();
+            // Missions earn their reward; purchases spend the item cost, but only when they go through
+            String gold;
+            if (purchase) {
+                gold = log.isSuccess() ? "-" + log.getReward() : "0";
+            } else {
+                gold = "+" + log.getReward();
+            }
             String outcome = log.isSuccess() ? "SUCCESS" : "FAIL";
             String message = log.getServerMessage() == null ? "" : log.getServerMessage();
             String truncMsg = message.length() > 40 ? message.substring(0, 40) + "..." : message;
-            System.out.printf("| %-8s | %-8s | %-20s | %-6s | %-9s | %-43s |%n",
+            System.out.printf("| %-16s | %-8s | %-20s | %-6s | %-9s | %-43s |%n",
                     TIME_FORMAT.format(Instant.ofEpochMilli(log.getTimestamp())),
                     log.getEntryType(), log.getAdId(), gold, outcome, truncMsg);
         }
@@ -561,7 +567,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
         }
         System.out.println("+-----+------------+---------------------------+--------+");
 
-        System.out.println("💡 Strategy: Note down the 'IDX' number, for the shppable item for your dragon");
+        System.out.println("💡 Strategy: Note down the 'IDX' number of the item you want, then buy it with action [9].");
     }
 
 
@@ -602,7 +608,8 @@ public class MugloarCLIRunner implements CommandLineRunner {
         PlayerStatus status = playerRepo.findById(currentGameId).orElse(null);
 
         if (status == null){
-            System.out.println("Your dragon should have some assignment , there is no status for your dragon");
+            System.out.println("⚠️ No player status is stored for this game, so your gold can't be checked.");
+            System.out.println("   Solve an ad first with action [3], or start a new game with action [1].");
             return;
         }
 

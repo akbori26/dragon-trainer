@@ -71,6 +71,41 @@ class MugloarServiceTest {
         server.verify();
     }
 
+    @Test
+    void getMessageBoardDecodesBase64AndRot13Ads() {
+        String gameId = "abc123";
+
+        // encrypted arrives as a JSON number: 1 = Base64, 2 = ROT13
+        server.expect(requestTo("https://dragonsofmugloar.com/api/v2/" + gameId + "/messages"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        [{"adId":"WEZ5QXllckk=","message":"U3RlYWwgc3VwZXIgYXdlc29tZSBkaWFtb25k",
+                          "reward":90,"expiresIn":5,"encrypted":1,"probability":"U3VpY2lkZSBtaXNzaW9u"},
+                         {"adId":"KSlNlreV","message":"Fgrny fhcre njrfbzr qvnzbaq",
+                          "reward":80,"expiresIn":4,"encrypted":2,"probability":"Fhvpvqr zvffvba"}]
+                        """, MediaType.APPLICATION_JSON));
+
+        List<AdItem> messages = mugloarService.getMessageBoard(gameId);
+
+        assertThat(messages).hasSize(2).allSatisfy(ad -> {
+            assertThat(ad.adId()).isEqualTo("XFyAyerI");
+            assertThat(ad.message()).isEqualTo("Steal super awesome diamond");
+            assertThat(ad.probability()).isEqualTo("Suicide mission");
+            assertThat(ad.encrypted()).isNull();
+        });
+        server.verify();
+    }
+
+    @Test
+    void decodeAdFallsBackToRot13WhenMarkerIsUnknownAndBase64Fails() {
+        AdItem ad = new AdItem("KSlNlreV", "Fgrny fhcre njrfbzr qvnzbaq", 80, 4, "3", "Fhvpvqr zvffvba");
+
+        AdItem decoded = MugloarService.decodeAd(ad);
+
+        assertThat(decoded.message()).isEqualTo("Steal super awesome diamond");
+        assertThat(decoded.probability()).isEqualTo("Suicide mission");
+    }
+
     @ParameterizedTest
     @CsvSource({
             "400, Bad request while fetching the message board",

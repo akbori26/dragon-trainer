@@ -14,7 +14,10 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 @Service
 public class MugloarService {
@@ -124,8 +127,51 @@ public class MugloarService {
             return List.of();
         }
 
-        BoardOfMessages board = new BoardOfMessages(tasks);
+        BoardOfMessages board = new BoardOfMessages(tasks.stream().map(MugloarService::decodeAd).toList());
         return board.messages();
+    }
+
+    /**
+     * Returns the ad with adId, message and probability decoded, so callers only ever see plain text.
+     * The server marks encrypted ads with encrypted = 1 (Base64) or 2 (ROT13).
+     * An unknown marker is decoded as Base64 when that works, otherwise as ROT13.
+     *
+     * @param ad Ad as received from the server
+     * @return The same ad in plain text, with encrypted set to null
+     */
+    static AdItem decodeAd(AdItem ad) {
+        if (ad.encrypted() == null) return ad;
+
+        UnaryOperator<String> decoder = switch (ad.encrypted()) {
+            case "1" -> MugloarService::decodeBase64;
+            case "2" -> MugloarService::rot13;
+            default -> value -> {
+                try {
+                    return decodeBase64(value);
+                } catch (IllegalArgumentException e) {
+                    return rot13(value);
+                }
+            };
+        };
+
+        return new AdItem(decoder.apply(ad.adId()), decoder.apply(ad.message()), ad.reward(),
+                ad.expiresIn(), null, decoder.apply(ad.probability()));
+    }
+
+    private static String decodeBase64(String value) {
+        if (value == null) return null;
+        return new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
+    }
+
+    private static String rot13(String value) {
+        if (value == null) return null;
+        StringBuilder sb = new StringBuilder(value.length());
+        for (char c : value.toCharArray()) {
+            if (c >= 'a' && c <= 'z') sb.append((char) ('a' + (c - 'a' + 13) % 26));
+            else if (c >= 'A' && c <= 'Z') sb.append((char) ('A' + (c - 'A' + 13) % 26));
+            else sb.append(c);
+        }
+        return sb.toString();
     }
 
 

@@ -367,6 +367,8 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
     /**
      * Maps the API's probability text to a colored risk label.
+     * Categories run from safest to deadliest. Encrypted ads are decoded by the service,
+     * so the probability text is always plain here.
      *
      * @param probability Probability text from the ad, e.g. "Piece of cake"
      * @return Risk label such as "🟢 SAFE", or the raw text in upper case if unknown
@@ -375,11 +377,12 @@ public class MugloarCLIRunner implements CommandLineRunner {
         if (probability == null) return "UNKNOWN RISK";
         // Locale.ROOT so a Turkish default locale doesn't turn "i" into "İ" / "I" into "ı"
         return switch (probability.toLowerCase(Locale.ROOT)) {
-            case "sure thing", "piece of cake", "walk in the park" -> "🟢 SAFE";
-            case "quite likely", "hmmm", "hmmm...." -> "🟡 MODERATE";
+            case "piece of cake", "sure thing", "walk in the park" -> "🟢 SAFE";
+            case "quite likely", "hmmm...." -> "🟡 LIKELY";
             case "gamble" -> "🎲 GAMBLE";
-            case "risky", "rather detrimental" -> "🟠 DANGEROUS";
-            case "suicide mission" -> "🔴 FATAL THREAT";
+            case "risky", "playing with fire" -> "🟠 RISKY";
+            case "rather detrimental" -> "🔴 DANGEROUS";
+            case "suicide mission", "impossible" -> "☠️ FATAL";
             default -> "⚪ " + probability.toUpperCase(Locale.ROOT);
         };
     }

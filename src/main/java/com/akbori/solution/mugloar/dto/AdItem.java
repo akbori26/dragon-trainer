@@ -5,7 +5,7 @@ public record AdItem(
         String message,
         int reward,
         int expiresIn,
-        String encrypted,    // always null
+        String encrypted,    // null for plain ads; "1" = Base64, "2" = ROT13 on adId, message and probability
         String probability // e.g., "Sure thing", "Piece of cake", "Walk in the park", "Risky", "Suicide mission"
 
 ) {}

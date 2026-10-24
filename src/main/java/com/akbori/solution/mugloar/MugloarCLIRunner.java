@@ -35,6 +35,10 @@ public class MugloarCLIRunner implements CommandLineRunner {
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
 
+    // ANSI colors are left out when NO_COLOR is set (https://no-color.org)
+    private static final boolean COLORS_ON = System.getenv("NO_COLOR") == null;
+    private static final String ANSI_RESET = "\u001B[0m";
+
     private String currentGameId = null;
     private List<CachedItem> cachedItems = new ArrayList<>();
 
@@ -346,7 +350,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
             System.out.printf("| Active Game ID    | %-29s |%n", status.getGameId());
             System.out.printf("| Remaining Vitality| %-29s |%n", status.getLives() + " ❤️ " + (status.getLives() == 0 ? "(DEAD)" : "(ACTIVE)"));
             System.out.printf("| Treasure Reserve  | %-29s |%n", status.getGold() + " 🪙 coins");
-            System.out.printf("| Dragon Level      | %-29d |%n", status.getLevel());
+            System.out.printf("| Dragon Level      | %s |%n", formatLevel(status.getLevel(), 29));
             System.out.printf("| Dynamic Score     | %-29d |%n", status.getScore());
             System.out.printf("| Top Record Tier   | %-29d |%n", status.getHighScore());
             System.out.println("+-------------------+-------------------------------+");
@@ -434,6 +438,36 @@ public class MugloarCLIRunner implements CommandLineRunner {
             case "suicide mission", "impossible" -> "☠️ FATAL";
             default -> "⚪ " + probability.toUpperCase(Locale.ROOT);
         };
+    }
+
+    /**
+     * Picks the ANSI 256-color code for a dragon level: yellow at level 1 fading to green at level 5.
+     * The 256-color cube has 6 steps per channel, so the tone keeps green and blue fixed (g=5, b=0)
+     * and lowers red from 5 to 0 across levels 1..5: 226, 190, 154, 82, 46.
+     * Level 0 (a new game) shows as yellow, and anything above 5 stays green.
+     *
+     * @param level Dragon level from the game
+     * @return 256-color palette index
+     */
+    static int levelColorCode(int level) {
+        int clamped = Math.max(1, Math.min(level, 5));
+        int red = Math.round(5f * (5 - clamped) / 4);
+        return 16 + 36 * red + 6 * 5;
+    }
+
+    /**
+     * Formats the dragon level as "🏅 Level N", padded to the column width and colored by levelColorCode().
+     * The text is padded before the color codes are added, because the escape codes take no space on
+     * screen but would still count towards printf's padding.
+     *
+     * @param level Dragon level from the game
+     * @param width Column width to pad to
+     * @return The padded, colored level text
+     */
+    private static String formatLevel(int level, int width) {
+        String padded = String.format("%-" + width + "s", "🏅 Level " + level);
+        if (!COLORS_ON) return padded;
+        return "\u001B[38;5;" + levelColorCode(level) + "m" + padded + ANSI_RESET;
     }
 
     /**
@@ -595,7 +629,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.println("+--------------------------------------------------------------------------------------------+");
         System.out.printf("| Details: %-81s |%n", serverMessage);
         System.out.printf("| Wallet Dynamics: %-25s | Health Remainder: %-25s |%n", res.gold() + " Gold coins", res.lives() + " Lives left");
-        System.out.printf("| Dragon Level: %-76s |%n", res.level());
+        System.out.printf("| Dragon Level: %s |%n", formatLevel(res.level(), 76));
         System.out.println("+--------------------------------------------------------------------------------------------+");
         printLivesWarning(res.lives());
     }

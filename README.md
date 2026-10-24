@@ -82,6 +82,20 @@ Each ad's probability text is shown as a risk category, from safest to deadliest
 Some ads arrive encrypted, in Base64 or ROT13. The client decodes them when it downloads the board,
 so they show and solve like any other ad.
 
+### Level colors
+Check Status and the purchase result show the dragon's level as `🏅 Level N`, colored from yellow to green:
+
+| Level | Color |
+|---|---|
+| 0–1 | yellow |
+| 2 | yellow-lime |
+| 3 | lime |
+| 4 | light green |
+| 5 and up | green |
+
+The colors are ANSI 256-color codes. If your terminal shows them as raw text, turn them off with the
+standard `NO_COLOR` variable: `NO_COLOR=1 ./mvnw spring-boot:run`.
+
 ### Game over and warnings
 - At **1 life**, a warning suggests buying a Healing potion. It appears after solving, after buying and in Check Status.
 - At **0 lives**, the game is over. Solve Ad, Reputation, Download Ads and Buy Item are blocked, because the server
@@ -134,6 +148,7 @@ data/
 | `MugloarServiceLiveTest` | The same endpoints against the real Mugloar server (needs network; tagged `live`) |
 | `MugloarCLIRunnerBuyingTest` | The Buy Item action, with all collaborators mocked |
 | `MugloarCLIRunnerGameOverTest` | Actions blocked at 0 lives, and the low-health and game-over warnings |
+| `MugloarCLIRunnerLevelColorTest` | The level color for each level, from yellow at 1 to green at 5 and above |
 | `MugloarCLIRunnerHistoryTest` | View Logs shows missions and purchases apart, with gold earned or spent |
 | `MugloarCLIRunnerSolveTest` | Solve Ad uses the current game's stored board (also after a new game or a resume), refuses expired ads, and recreates a missing player status |
 | `MugloarCLIRunnerErrorHandlingTest` | Network, response and database errors are reported without ending the terminal |

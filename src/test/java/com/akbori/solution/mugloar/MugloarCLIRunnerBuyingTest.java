@@ -94,7 +94,7 @@ class MugloarCLIRunnerBuyingTest {
         assertThat(status.getLevel()).isEqualTo(1);
         assertThat(status.getTurn()).isEqualTo(6);
 
-        assertThat(output.getOut()).contains("SUCCESSFUL SHOPPING", "Dragon Level: 1");
+        assertThat(output.getOut()).contains("SUCCESSFUL SHOPPING", "Dragon Level: ", "🏅 Level 1");
     }
 
     @Test

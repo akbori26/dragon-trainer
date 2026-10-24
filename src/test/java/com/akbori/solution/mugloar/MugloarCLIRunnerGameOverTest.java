@@ -173,8 +173,10 @@ class MugloarCLIRunnerGameOverTest {
         ReflectionTestUtils.invokeMethod(runner, "handleStatus");
 
         // Every border and row of the table is padded to the border's width; printf pads by
-        // String.length(), so comparing lengths catches a row whose format string is off
+        // String.length(), so comparing lengths catches a row whose format string is off.
+        // ANSI color codes take no space on screen, so they are removed before measuring.
         List<String> table = output.getOut().lines()
+                .map(line -> line.replaceAll("\u001B\\[[;\\d]*m", ""))
                 .filter(line -> line.startsWith("|") || line.startsWith("+"))
                 .toList();
         assertThat(table).hasSizeGreaterThan(5);

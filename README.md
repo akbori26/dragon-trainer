@@ -146,6 +146,11 @@ data/
 |---|---|
 | `MugloarServiceTest` | API calls against a mocked server, including error responses and ad decoding |
 | `MugloarServiceLiveTest` | The same endpoints against the real Mugloar server (needs network; tagged `live`) |
+| `MugloarCLIRunnerStartAndReputationTest` | Start Game saves the new game and `LAST_GAME_ID`; Reputation prints the report and counts a turn |
+| `MugloarCLIRunnerDownloadAdsTest` | Download Ads replaces the stored board, keeps used flags and stamps the download turn |
+| `MugloarCLIRunnerBoardTest` | View Board shows USED and EXPIRED ads, risk labels and shortened messages in an aligned table |
+| `MugloarCLIRunnerRiskCategoryTest` | Every probability text maps to the right risk category |
+| `MugloarCLIRunnerMarketTest` | Market downloads the shop once per game, then reads it from the database |
 | `MugloarCLIRunnerBuyingTest` | The Buy Item action, with all collaborators mocked |
 | `MugloarCLIRunnerGameOverTest` | Actions blocked at 0 lives, and the low-health and game-over warnings |
 | `MugloarCLIRunnerLevelColorTest` | The level color for each level, from yellow at 1 to green at 5 and above |

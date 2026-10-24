@@ -150,7 +150,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
      * the stored ads are left untouched. Shows the new board afterwards.
      */
     private void handleDownloadAds() {
-        if (checkSessionMissing()) return;
+        if (checkSessionMissing() || checkGameOver()) return;
 
         System.out.println("\nDownloading active contracts...");
         List<AdItem> downloaded = mugloarService.getMessageBoard(currentGameId);
@@ -235,7 +235,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
      * @param scanner Console input used to read the ad index
      */
     private void handleSolve(Scanner scanner) {
-        if (checkSessionMissing()) return;
+        if (checkSessionMissing() || checkGameOver()) return;
         if (cachedAds.isEmpty()) {
             System.out.println("❌ No cached assignments available. Run action [2] to scan the board first.");
             return;
@@ -292,6 +292,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.printf("| Details: %-81s |%n", res.message());
         System.out.printf("| Wallet Dynamics: %-25s | Health Remainder: %-25s |%n", res.gold() + " Gold coins", res.lives() + " Lives left");
         System.out.println("+--------------------------------------------------------------------------------------------+");
+        printLivesWarning(res.lives());
     }
 
     /**
@@ -312,6 +313,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
             System.out.printf("| Dynamic Score     | %-29d |%n", status.getScore());
             System.out.printf("| Top Record Tier   | %-29d |%n", status.getHighScore());
             System.out.println("+-------------------+-------------------------------+");
+            printLivesWarning(status.getLives());
         }, () -> System.out.println("⚠️ Warning: Data record entry matching this ID was not found in SQLite."));
     }
 
@@ -348,7 +350,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
      * HTTP errors are reported by the service, so nothing is printed here when the call fails.
      */
     private void handleReputation() {
-        if (checkSessionMissing()) return;
+        if (checkSessionMissing() || checkGameOver()) return;
 
         System.out.println("\nInvestigating reputation...");
         ReputationResponse rep = mugloarService.investigateReputation(currentGameId);
@@ -402,6 +404,34 @@ public class MugloarCLIRunner implements CommandLineRunner {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Checks whether the dragon of the current game has no lives left and prints a warning if so.
+     * Used by actions that call the server, which rejects every request for a finished game.
+     * Read-only actions (board, status, logs, market) stay available.
+     *
+     * @return true if the stored status shows 0 lives
+     */
+    private boolean checkGameOver() {
+        boolean dead = playerRepo.findById(currentGameId).map(s -> s.getLives() <= 0).orElse(false);
+        if (dead) {
+            System.out.println("💀 GAME OVER: Your dragon has no lives left. Start a new game via item [1].");
+        }
+        return dead;
+    }
+
+    /**
+     * Prints a game-over notice at 0 lives, or a low-health warning at 1 life.
+     *
+     * @param lives Lives left after the last action
+     */
+    private void printLivesWarning(int lives) {
+        if (lives <= 0) {
+            System.out.println("💀 GAME OVER: Your dragon has no lives left. Start a new game via item [1].");
+        } else if (lives == 1) {
+            System.out.println("🚨 Only 1 life left! Buy a Healing potion via items [8] and [9] before taking another risk.");
+        }
     }
 
 
@@ -460,7 +490,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
      * @param scanner Console input used to read the item index
      */
     private void handleBuying(Scanner scanner) {
-        if (checkSessionMissing()) return;
+        if (checkSessionMissing() || checkGameOver()) return;
         // Reload so items left over from a previous game are never used
         cachedItems = marketRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
         if (cachedItems.isEmpty()) {
@@ -523,6 +553,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.printf("| Wallet Dynamics: %-25s | Health Remainder: %-25s |%n", res.gold() + " Gold coins", res.lives() + " Lives left");
         System.out.printf("| Dragon Level: %-76s |%n", res.level());
         System.out.println("+--------------------------------------------------------------------------------------------+");
+        printLivesWarning(res.lives());
     }
 
 }

@@ -105,6 +105,7 @@ src/main/resources/data/
 | `MugloarServiceTest` | API calls against a mocked server, including error responses and ad decoding |
 | `MugloarServiceLiveTest` | The same endpoints against the real Mugloar server (needs network; tagged `live`) |
 | `MugloarCLIRunnerBuyingTest` | The Buy Item action, with all collaborators mocked |
+| `MugloarCLIRunnerGameOverTest` | Actions blocked at 0 lives, and the low-health and game-over warnings |
 | `*RepositoryTest` | Each repository, against a throwaway in-memory SQLite database |
 | `DragonTrainerApplicationTests` | The Spring context starts. It sets `mugloar.cli.enabled=false` so the menu doesn't wait for input |
 

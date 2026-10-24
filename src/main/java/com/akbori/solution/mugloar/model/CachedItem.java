@@ -25,7 +25,7 @@ CachedItem {
 
     public CachedItem() {}
     public CachedItem(String gameId, int displayIndex, ShopItem shopItem) {
-        this.gameId = gameId; this.displayIndex = displayIndex; this.itemId = shopItem.itemId(); this.name = shopItem.name();
+        this.gameId = gameId; this.displayIndex = displayIndex; this.itemId = shopItem.id(); this.name = shopItem.name();
         this.cost = shopItem.cost();
     }
 

@@ -1,7 +1,7 @@
 package com.akbori.solution.mugloar.dto;
 
 public record ShopItem(
-        String itemId,
+        String id,
         String name,
         int cost
 

@@ -1,5 +1,6 @@
 package com.akbori.solution.mugloar.repository;
 
+import com.akbori.solution.mugloar.model.EntryType;
 import com.akbori.solution.mugloar.model.MissionLog;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,5 +40,17 @@ class MissionLogRepositoryTest {
         assertThat(logs).extracting(MissionLog::getGameId).containsOnly("game-1");
         assertThat(logs.get(0).getAdId()).isEqualTo("ad-2");
         assertThat(logs.get(0).isSuccess()).isFalse();
+    }
+
+    @Test
+    void entryTypeIsStoredAndMissionIsTheDefault() {
+        missionLogRepository.save(new MissionLog("game-3", "ad-1", 20, "🟢 SAFE", true, "Mission done"));
+        missionLogRepository.save(new MissionLog(EntryType.PURCHASE, "game-3", "hpot", 50, null, true, "Bought Healing potion for 50 gold"));
+
+        List<MissionLog> logs = missionLogRepository.findByGameIdOrderByIdDesc("game-3");
+
+        assertThat(logs).extracting(MissionLog::getEntryType)
+                .containsExactly(EntryType.PURCHASE, EntryType.MISSION);
+        assertThat(logs.get(0).getAdId()).isEqualTo("hpot");
     }
 }

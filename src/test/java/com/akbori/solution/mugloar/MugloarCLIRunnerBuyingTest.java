@@ -3,6 +3,7 @@ package com.akbori.solution.mugloar;
 import com.akbori.solution.mugloar.dto.ShopItem;
 import com.akbori.solution.mugloar.dto.TradeResponse;
 import com.akbori.solution.mugloar.model.CachedItem;
+import com.akbori.solution.mugloar.model.EntryType;
 import com.akbori.solution.mugloar.model.MissionLog;
 import com.akbori.solution.mugloar.model.PlayerStatus;
 import com.akbori.solution.mugloar.repository.AppConfigRepository;
@@ -84,6 +85,8 @@ class MugloarCLIRunnerBuyingTest {
         assertThat(log.getValue().getAdId()).isEqualTo("cs");
         assertThat(log.getValue().getReward()).isEqualTo(100);
         assertThat(log.getValue().isSuccess()).isTrue();
+        assertThat(log.getValue().getEntryType()).isEqualTo(EntryType.PURCHASE);
+        assertThat(log.getValue().getServerMessage()).isEqualTo("Bought Claw Sharpening for 100 gold");
 
         verify(playerRepo).save(status);
         assertThat(status.getGold()).isEqualTo(20);
@@ -105,6 +108,8 @@ class MugloarCLIRunnerBuyingTest {
         ArgumentCaptor<MissionLog> log = ArgumentCaptor.forClass(MissionLog.class);
         verify(logRepo).save(log.capture());
         assertThat(log.getValue().isSuccess()).isFalse();
+        assertThat(log.getValue().getEntryType()).isEqualTo(EntryType.PURCHASE);
+        assertThat(log.getValue().getServerMessage()).isEqualTo("Could not buy Healing potion for 50 gold");
         assertThat(output.getOut()).contains("FAILURE");
     }
 

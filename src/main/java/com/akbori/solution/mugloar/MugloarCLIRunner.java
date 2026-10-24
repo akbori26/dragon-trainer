@@ -355,29 +355,35 @@ public class MugloarCLIRunner implements CommandLineRunner {
     }
 
     /**
-     * Prints the mission log of the current game, newest attempt first.
+     * Prints the history of the current game, newest first: mission attempts (gold earned)
+     * and shop purchases (gold spent), told apart by their entry type.
      */
     private void handleHistory() {
         if (checkSessionMissing()) return;
 
         List<MissionLog> logs = logRepo.findByGameIdOrderByIdDesc(currentGameId);
         if (logs.isEmpty()) {
-            System.out.println("ℹ️ No assignments have been solved yet in this session.");
+            System.out.println("ℹ️ No missions or purchases recorded yet in this game.");
             return;
         }
 
-        System.out.println("\n+----------+----------------------+--------+-----------+---------------------------------------------+");
-        System.out.printf("| %-8s | %-20s | %-6s | %-9s | %-43s |%n", "TIME", "MISSION AD ID", "GOLD", "RESULT", "SERVER VERDICT LOG");
-        System.out.println("+----------+----------------------+--------+-----------+---------------------------------------------+");
+        String border = "+----------+----------+----------------------+--------+-----------+---------------------------------------------+";
+        System.out.println("\n" + border);
+        System.out.printf("| %-8s | %-8s | %-20s | %-6s | %-9s | %-43s |%n", "TIME", "TYPE", "AD / ITEM", "GOLD", "RESULT", "SERVER VERDICT LOG");
+        System.out.println(border);
 
         for (MissionLog log : logs) {
+            boolean purchase = log.getEntryType() == EntryType.PURCHASE;
+            // Missions earn their reward; purchases spend the item cost
+            String gold = (purchase ? "-" : "+") + log.getReward();
             String outcome = log.isSuccess() ? "SUCCESS" : "FAIL";
-            String truncMsg = log.getServerMessage().length() > 40 ? log.getServerMessage().substring(0, 40) + "..." : log.getServerMessage();
-            System.out.printf("| %-8s | %-20s | %-6d | %-9s | %-43s |%n",
+            String message = log.getServerMessage() == null ? "" : log.getServerMessage();
+            String truncMsg = message.length() > 40 ? message.substring(0, 40) + "..." : message;
+            System.out.printf("| %-8s | %-8s | %-20s | %-6s | %-9s | %-43s |%n",
                     TIME_FORMAT.format(Instant.ofEpochMilli(log.getTimestamp())),
-                    log.getAdId(), log.getReward(), outcome, truncMsg);
+                    log.getEntryType(), log.getAdId(), gold, outcome, truncMsg);
         }
-        System.out.println("+----------+----------------------+--------+-----------+---------------------------------------------+");
+        System.out.println(border);
     }
 
     /**
@@ -569,9 +575,10 @@ public class MugloarCLIRunner implements CommandLineRunner {
         // HTTP errors are reported by the service; nothing is logged or marked as used
         if (res == null) return;
 
-        String serverMessage ="User Buyed the item " + targetedItem.getName() + " with " + targetedItem.getCost() + " Gold";
-        // Log results to DB
-        logRepo.save(new MissionLog(currentGameId, targetedItem.getItemId(), targetedItem.getCost(),
+        String serverMessage = (res.shoppingSuccess() ? "Bought " : "Could not buy ") + targetedItem.getName()
+                + " for " + targetedItem.getCost() + " gold";
+        // Log results to DB as a purchase, so View Logs shows it apart from missions
+        logRepo.save(new MissionLog(EntryType.PURCHASE, currentGameId, targetedItem.getItemId(), targetedItem.getCost(),
                 null, res.shoppingSuccess(), serverMessage));
 
 

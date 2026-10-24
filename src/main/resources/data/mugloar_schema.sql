@@ -16,7 +16,8 @@ CREATE TABLE mission_log (
     risk_category TEXT,
     server_message TEXT,
     success INTEGER NOT NULL, -- SQLite handles boolean flags as 0 or 1 integers
-    timestamp TEXT            -- Mapped using ISO-8601 formatting text strings
+    timestamp TEXT,           -- Mapped using ISO-8601 formatting text strings
+    entry_type TEXT NOT NULL DEFAULT 'MISSION'  -- MISSION or PURCHASE
 );
 
 CREATE TABLE player_status (

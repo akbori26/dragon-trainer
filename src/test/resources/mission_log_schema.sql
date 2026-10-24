@@ -9,5 +9,6 @@ CREATE TABLE mission_log (
     risk_category TEXT,
     server_message TEXT,
     success INTEGER NOT NULL,
-    timestamp TEXT
+    timestamp TEXT,
+    entry_type TEXT NOT NULL DEFAULT 'MISSION'
 );

@@ -55,7 +55,7 @@ Otherwise, choose option `1` to start a new game.
 | 2 | View Board | Shows the stored ads, their reward, turns left and risk category |
 | 3 | Solve Ad | Sends the dragon on the ad you pick by its `IDX` |
 | 4 | Check Status | Shows turn, lives, gold, level, score and high score |
-| 5 | View Logs | Shows the mission and purchase history of the current game |
+| 5 | View Logs | Shows the history of the current game. The TYPE column tells missions from purchases, and GOLD shows gold earned (`+73`) or spent (`-50`) |
 | 6 | Reputation | Shows your standing with the people, the state and the underworld (costs a turn) |
 | 7 | Download Ads | Downloads a new message board from the server |
 | 8 | Market | Shows the shop items, and downloads them the first time for each game |
@@ -120,7 +120,7 @@ data/
 | `player_status` | Latest lives, gold, level, score, high score and turn per game |
 | `cached_ad` | The downloaded message board per game, with a `used` flag for ads already attempted |
 | `cached_item` | The shop items per game |
-| `mission_log` | Every mission attempt and purchase, with its result |
+| `mission_log` | Every mission attempt and purchase, with its result. `entry_type` is `MISSION` or `PURCHASE`; for a purchase, `ad_id` holds the item ID and `reward` the gold spent |
 | `app_config` | Settings, such as `LAST_GAME_ID` for resuming |
 
 ## Tests
@@ -134,6 +134,7 @@ data/
 | `MugloarServiceLiveTest` | The same endpoints against the real Mugloar server (needs network; tagged `live`) |
 | `MugloarCLIRunnerBuyingTest` | The Buy Item action, with all collaborators mocked |
 | `MugloarCLIRunnerGameOverTest` | Actions blocked at 0 lives, and the low-health and game-over warnings |
+| `MugloarCLIRunnerHistoryTest` | View Logs shows missions and purchases apart, with gold earned or spent |
 | `MugloarCLIRunnerSolveTest` | Solve Ad uses the current game's stored board (also after a new game or a resume), refuses expired ads, and recreates a missing player status |
 | `MugloarCLIRunnerErrorHandlingTest` | Network, response and database errors are reported without ending the terminal |
 | `*RepositoryTest` | Each repository, against a throwaway in-memory SQLite database |

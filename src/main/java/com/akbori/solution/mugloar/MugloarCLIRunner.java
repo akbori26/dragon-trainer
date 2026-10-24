@@ -348,11 +348,15 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
     /**
      * Prints the current game's player status (turn, lives, gold, score, high score) from SQLite.
+     * The server always reports highScore as 0, so the high score shown is the best score
+     * across all games stored locally.
      */
     private void handleStatus() {
         if (checkSessionMissing()) return;
 
         playerRepo.findById(currentGameId).ifPresentOrElse(status -> {
+            int highScore = Math.max(status.getScore(),
+                    playerRepo.findTopByOrderByScoreDesc().map(PlayerStatus::getScore).orElse(0));
             System.out.println("\n+---------------------------------------------------+");
             System.out.println("|        LOCAL METRIC VENEER (PULLED FROM SQLITE)   |");
             System.out.println("+-------------------+-------------------------------+");
@@ -362,7 +366,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
             System.out.printf("| Treasure Reserve  | %-29s |%n", status.getGold() + " 🪙 coins");
             System.out.printf("| Dragon Level      | %s |%n", formatLevel(status.getLevel(), 29));
             System.out.printf("| Dynamic Score     | %-29d |%n", status.getScore());
-            System.out.printf("| Top Record Tier   | %-29d |%n", status.getHighScore());
+            System.out.printf("| Top Record Tier   | %-29d |%n", highScore);
             System.out.println("+-------------------+-------------------------------+");
             printLivesWarning(status.getLives());
         }, () -> System.out.println("⚠️ Warning: Data record entry matching this ID was not found in SQLite."));
@@ -388,13 +392,8 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
         for (MissionLog log : logs) {
             boolean purchase = log.getEntryType() == EntryType.PURCHASE;
-            // Missions earn their reward; purchases spend the item cost, but only when they go through
-            String gold;
-            if (purchase) {
-                gold = log.isSuccess() ? "-" + log.getReward() : "0";
-            } else {
-                gold = "+" + log.getReward();
-            }
+            // Missions earn their reward and purchases spend the item cost, but only when they succeed
+            String gold = !log.isSuccess() ? "0" : (purchase ? "-" : "+") + log.getReward();
             String outcome = log.isSuccess() ? "SUCCESS" : "FAIL";
             String message = log.getServerMessage() == null ? "" : log.getServerMessage();
             String truncMsg = message.length() > 40 ? message.substring(0, 40) + "..." : message;

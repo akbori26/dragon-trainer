@@ -149,6 +149,17 @@ class MugloarCLIRunnerGameOverTest {
     }
 
     @Test
+    void statusShowsTheBestScoreAcrossAllStoredGamesAsHighScore(CapturedOutput output) {
+        // The current game scored 40, while an older game reached 1378; the server's highScore is always 0
+        when(playerRepo.findById(GAME_ID)).thenReturn(Optional.of(new PlayerStatus(GAME_ID, 3, 100, 40, 0, 5)));
+        when(playerRepo.findTopByOrderByScoreDesc()).thenReturn(Optional.of(new PlayerStatus("old-game", 0, 0, 1378, 0, 30)));
+
+        ReflectionTestUtils.invokeMethod(runner, "handleStatus");
+
+        assertThat(output.getOut()).contains("| Dynamic Score     | 40 ", "| Top Record Tier   | 1378 ");
+    }
+
+    @Test
     void statusWithOneLifePrintsLowHealthWarning(CapturedOutput output) {
         givenLives(1);
 

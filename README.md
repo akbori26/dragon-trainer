@@ -54,8 +54,8 @@ Otherwise, choose option `1` to start a new game.
 | 1 | Start Game | Starts a new game on the server and makes it the current game |
 | 2 | View Board | Shows the stored ads, their reward, turns left and risk category |
 | 3 | Solve Ad | Sends the dragon on the ad you pick by its `IDX` |
-| 4 | Check Status | Shows turn, lives, gold, level, score and high score |
-| 5 | View Logs | Shows the history of the current game. The TYPE column tells missions from purchases, and GOLD shows gold earned (`+73`) or spent (`-50`) |
+| 4 | Check Status | Shows turn, lives, gold, level, score and high score. The server always reports a high score of 0, so the high score shown is your best score across all stored games |
+| 5 | View Logs | Shows the history of the current game, with date and time. The TYPE column tells missions from purchases, and GOLD shows gold earned (`+73`) or spent (`-50`); a failed mission or purchase shows `0` |
 | 6 | Reputation | Shows your standing with the people, the state and the underworld (costs a turn) |
 | 7 | Download Ads | Downloads a new message board from the server |
 | 8 | Market | Shows the shop items, and downloads them the first time for each game |

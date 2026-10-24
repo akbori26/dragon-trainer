@@ -72,4 +72,14 @@ class PlayerStatusRepositoryTest {
     void findByIdReturnsEmptyForUnknownGame() {
         assertThat(playerStatusRepository.findById("missing-game")).isEmpty();
     }
+
+    @Test
+    void findTopByOrderByScoreDescReturnsTheBestGame() {
+        playerStatusRepository.save(new PlayerStatus("low", 3, 0, 120, 0, 5));
+        playerStatusRepository.save(new PlayerStatus("best", 1, 0, 1378, 0, 30));
+        playerStatusRepository.save(new PlayerStatus("mid", 2, 0, 640, 0, 12));
+
+        assertThat(playerStatusRepository.findTopByOrderByScoreDesc())
+                .get().extracting(PlayerStatus::getGameId).isEqualTo("best");
+    }
 }

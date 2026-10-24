@@ -101,7 +101,8 @@ class MugloarCLIRunnerHistoryTest {
 
         showHistory();
 
-        assertThat(rowFor(output, "ad-2")).contains("MISSION", "+15", "FAIL");
+        // A failed mission earns nothing
+        assertThat(rowFor(output, "ad-2")).contains("MISSION", "| 0      |", "FAIL").doesNotContain("+15");
     }
 
     @Test

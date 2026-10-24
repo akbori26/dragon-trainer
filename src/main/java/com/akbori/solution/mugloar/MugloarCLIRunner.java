@@ -2,10 +2,7 @@ package com.akbori.solution.mugloar;
 
 import com.akbori.solution.mugloar.dto.*;
 import com.akbori.solution.mugloar.model.*;
-import com.akbori.solution.mugloar.repository.AppConfigRepository;
-import com.akbori.solution.mugloar.repository.CachedAdRepository;
-import com.akbori.solution.mugloar.repository.MissionLogRepository;
-import com.akbori.solution.mugloar.repository.PlayerStatusRepository;
+import com.akbori.solution.mugloar.repository.*;
 import com.akbori.solution.mugloar.service.MugloarService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -28,24 +25,27 @@ public class MugloarCLIRunner implements CommandLineRunner {
     private final MissionLogRepository logRepo;
     private final AppConfigRepository configRepo;
     private final CachedAdRepository adRepo;
+    private final CachedItemRepository marketRepo;
 
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
 
     private String currentGameId = null;
     private List<CachedAd> cachedAds = new ArrayList<>();
+    private List<CachedItem> cachedItems = new ArrayList<>();
 
     /**
      * Wires the API service and the SQLite repositories used by the terminal menu.
      */
     public MugloarCLIRunner(MugloarService mugloarService, PlayerStatusRepository playerRepo,
                             MissionLogRepository logRepo, AppConfigRepository configRepo,
-                            CachedAdRepository adRepo) {
+                            CachedAdRepository adRepo, CachedItemRepository marketRepo) {
         this.mugloarService = mugloarService;
         this.playerRepo = playerRepo;
         this.logRepo = logRepo;
         this.configRepo = configRepo;
         this.adRepo = adRepo;
+        this.marketRepo = marketRepo;
     }
 
     /**
@@ -74,7 +74,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
 
         while (true) {
             printGridMenu();
-            System.out.print("\nSelect an action [1-8]: ");
+            System.out.print("\nSelect an action [1-10]: ");
             String command = scanner.nextLine().trim();
 
             switch (command) {
@@ -85,17 +85,19 @@ public class MugloarCLIRunner implements CommandLineRunner {
                 case "5" -> handleHistory();
                 case "6" -> handleReputation();
                 case "7" -> handleDownloadAds();
-                case "8" -> {
+                case "8" -> handleMarketBoard();
+                case "9" -> handleBuying(scanner);
+                case "10" -> {
                     System.out.println("\nSaving application state configuration... Goodbye!");
                     System.exit(0);
                 }
-                default -> System.out.println("❌ Invalid option. Please input a number from 1 to 8.");
+                default -> System.out.println("❌ Invalid option. Please input a number from 1 to 10.");
             }
         }
     }
 
     /**
-     * Prints the action dashboard with the available menu options [1-8].
+     * Prints the action dashboard with the available menu options [1-10].
      */
     private void printGridMenu() {
         System.out.println("\n+---------------------------------------------------+");
@@ -108,7 +110,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
         System.out.println("|  5 | View Logs        | Review attempt statistics |");
         System.out.println("|  6 | Reputation       | Investigate standing      |");
         System.out.println("|  7 | Download Ads     | Fetch new jobs from server|");
-        System.out.println("|  8 | Exit Terminal    | Safely shut down framework|");
+        System.out.println("|  8 | Market           | Show items for sale       |");
+        System.out.println("|  9 | Buy Item         | Purchase item by index num|");
+        System.out.println("| 10 | Exit Terminal    | Safely shut down framework|");
         System.out.println("+----+------------------+---------------------------+");
     }
 
@@ -392,5 +396,126 @@ public class MugloarCLIRunner implements CommandLineRunner {
         }
         return false;
     }
+
+
+
+    /**
+     * Shows the market board for the current game from the cached_item table.
+     * The shop list does not change during a game, so it is downloaded from the API
+     * and stored only when this game has no items stored yet.
+     */
+    private void handleMarketBoard() {
+        if (checkSessionMissing()) return;
+
+        cachedItems = marketRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
+
+        if (cachedItems.isEmpty()) {
+            System.out.println("\nDownloading market items...");
+            List<ShopItem> downloaded = mugloarService.getMarketItems(currentGameId);
+            if (downloaded.isEmpty()) {
+                System.out.println("⚠️ No market items available for this game.");
+                return;
+            }
+
+            List<CachedItem> rows = new ArrayList<>();
+            for (int i = 0; i < downloaded.size(); i++) {
+                rows.add(new CachedItem(currentGameId, i, downloaded.get(i)));
+            }
+            marketRepo.saveAll(rows);
+            cachedItems = rows;
+            System.out.println("✅ Stored " + rows.size() + " market items.");
+        }
+
+        System.out.println("\n+-----+------------+---------------------------+--------+");
+        System.out.printf("| %-3s | %-10s | %-25s | %-6s |%n", "IDX", "ITEM ID", "NAME", "COST");
+        System.out.println("+-----+------------+---------------------------+--------+");
+
+        for (int i = 0; i < cachedItems.size(); i++) {
+            CachedItem item = cachedItems.get(i);
+            int idx = i + 1; // IDX shown to the user starts from 1
+
+            System.out.printf("| %-3d | %-10s | %-25s | %-6d |%n", idx, item.getItemId(), item.getName(), item.getCost());
+        }
+        System.out.println("+-----+------------+---------------------------+--------+");
+
+        System.out.println("💡 Strategy: Note down the 'IDX' number, for the shppable item for your dragon");
+    }
+
+
+
+
+
+    /**
+     * Asks for a market IDX and buys that item.
+     * Refuses items the player cannot afford. On a purchase, logs the result to mission_log
+     * and updates the stored player status.
+     *
+     * @param scanner Console input used to read the item index
+     */
+    private void handleBuying(Scanner scanner) {
+        if (checkSessionMissing()) return;
+        // Reload so items left over from a previous game are never used
+        cachedItems = marketRepo.findByGameIdOrderByDisplayIndexAsc(currentGameId);
+        if (cachedItems.isEmpty()) {
+            System.out.println("❌ No cached market items available. Run action [8] to open the market first.");
+            return;
+        }
+
+        System.out.printf("\nEnter target market item index number [1-%d]: ", cachedItems.size());
+        String input = scanner.nextLine().trim();
+        int index;
+        try {
+            // IDX on the board starts from 1, the list is 0-based
+            index = Integer.parseInt(input) - 1;
+            if (index < 0 || index >= cachedItems.size()) throw new IndexOutOfBoundsException();
+        } catch (Exception e) {
+            System.out.println("❌ Invalid number index entry.");
+            return;
+        }
+
+        CachedItem targetedItem = cachedItems.get(index);
+
+        // Update local profile copy
+        PlayerStatus status = playerRepo.findById(currentGameId).orElse(null);
+
+        if (status == null){
+            System.out.println("Your dragon should have some assignment , there is no status for your dragon");
+            return;
+        }
+
+        if (status.getGold() < targetedItem.getCost()) {
+            System.out.printf("⚠️ Warnadd ing: Market Item ID %s is so expensive for your budget. ypu have only %s Gold at the moment%n", targetedItem.getItemId(), status.getGold());
+            System.out.println("   Pick a different market item, or wait until you get enough gold.");
+            return;
+        }
+
+        System.out.printf("🚀 Dealing with the purchase of the Market Item ID: %s...%n", targetedItem.getItemId());
+
+    TradeResponse  res = mugloarService.buyItem(currentGameId, targetedItem.getItemId()) ;
+        // HTTP errors are reported by the service; nothing is logged or marked as used
+        if (res == null) return;
+
+        String serverMessage ="User Buyed the item " + targetedItem.getName() + " with " + targetedItem.getCost() + " Gold";
+        // Log results to DB
+        logRepo.save(new MissionLog(currentGameId, targetedItem.getItemId(), targetedItem.getCost(),
+                null, res.shoppingSuccess(), serverMessage));
+
+
+
+        status.setLives(res.lives());
+        status.setGold(res.gold());
+        status.setTurn(res.turn());
+        status.setLevel(res.level());
+        playerRepo.save(status);
+
+
+        System.out.println("\n+--------------------------------------------------------------------------------------------+");
+        System.out.printf("| OUTCOME: %-81s |%n", res.shoppingSuccess() ? "🏆 SUCCESSFUL SHOPPING" : "💀  FAILURE");
+        System.out.println("+--------------------------------------------------------------------------------------------+");
+        System.out.printf("| Details: %-81s |%n", serverMessage);
+        System.out.printf("| Wallet Dynamics: %-25s | Health Remainder: %-25s |%n", res.gold() + " Gold coins", res.lives() + " Lives left");
+        System.out.println("+--------------------------------------------------------------------------------------------+");
+    }
+
 }
 

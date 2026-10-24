@@ -7,19 +7,13 @@ package com.akbori.solution.mugloar.service;
     The client automatically reads the server's response body directly into your structural Java Record schema object.
 
 */
-import com.akbori.solution.mugloar.dto.AdItem;
-import com.akbori.solution.mugloar.dto.BoardOfMessages;
-import com.akbori.solution.mugloar.dto.GameStartResponse;
-import com.akbori.solution.mugloar.dto.ReputationResponse;
-import com.akbori.solution.mugloar.dto.SolutionResponse;
+import com.akbori.solution.mugloar.dto.*;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -176,6 +170,89 @@ public class MugloarService {
 
 
 
+    /**
+     * Executes API call and download the shopping Items for the particular game
+     * If the return message is other than success it just writes the information to the console.
+     *
+     * @param gameId Active session ID token
+     * @return list of ShopItems
+     */
+    public List<ShopItem> getMarketItems(String gameId) {
+        // exchange() hands us the raw response so the status is checked before any body mapping
+        List<ShopItem> items = restClient.get()
+                .uri("/{gameId}/shop", gameId)
+                .header(HttpHeaders.CONTENT_TYPE, "application/json") // 2. Headers
+                .exchange((request, response) -> {
+                    HttpStatusCode status = response.getStatusCode();
 
+                    if (status.value() == 200) {
+                        return response.bodyTo(new ParameterizedTypeReference<List<ShopItem>>() {});
+                    }
+
+                    switch (status.value()) {
+                        case 400 -> System.out.println("❌ Bad request while fetching the shop/market items for game: " + gameId);
+                        case 404 -> System.out.println("❌ Game not found or already over: " + gameId);
+                        case 410 -> System.out.println("❌ Game session has expired: " + gameId);
+                        default -> {
+                            if (status.is5xxServerError()) {
+                                System.out.println("❌ Mugloar server error (" + status.value() + ") while fetching the message board.");
+                            } else {
+                                System.out.println("❌ Unexpected response (" + status.value() + ") while fetching the message board.");
+                            }
+                        }
+                    }
+                    return null;
+                });
+
+        if (items == null) {
+            return List.of();
+        }
+
+        BoardOfMarket boardOfMarket = new BoardOfMarket(items);
+        return boardOfMarket.shopItems();
+    }
+
+
+
+
+
+
+    /**
+            *
+            * Sends a POST request to buy a specific market item
+            * The TradeResponse is only created when the status is 200,
+            * otherwise it just writes the information to the console.
+     *
+             * @param gameId Active session ID token
+     * @param itemId   The unique ID of the target market item
+     * @return TradeResponse payload detailing updated state matrices, or null if the request did not succeed
+     */
+    public TradeResponse buyItem(String gameId, String itemId) {
+        // exchange() hands us the raw response so the status is checked before any body mapping
+        return restClient.post()
+                .uri("/{gameId}/shop/{itemId}", gameId, itemId) // Safely injects both path variables in order
+                .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                .exchange((request, response) -> {
+                    HttpStatusCode status = response.getStatusCode();
+
+                    if (status.value() == 200) {
+                        return response.bodyTo(TradeResponse.class);
+                    }
+
+                    switch (status.value()) {
+                        case 400 -> System.out.println("❌ Item " + itemId + " could not be bought for game: " + gameId);
+                        case 404 -> System.out.println("❌ Game not found or already over: " + gameId);
+                        case 410 -> System.out.println("❌ Game session has expired: " + gameId);
+                        default -> {
+                            if (status.is5xxServerError()) {
+                                System.out.println("❌ Mugloar server error (" + status.value() + ") while buying item " + itemId + ".");
+                            } else {
+                                System.out.println("❌ Unexpected response (" + status.value() + ") while buying item " + itemId + ".");
+                            }
+                        }
+                    }
+                    return null;
+                });
+    }
 
 }

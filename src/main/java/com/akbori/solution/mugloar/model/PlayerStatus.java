@@ -11,7 +11,7 @@ public class PlayerStatus {
     private int score;
     private int highScore;
     private int turn;
-
+    private int level;
 
     // Constructors, Getters, Setters
     public PlayerStatus() {}
@@ -35,5 +35,7 @@ public class PlayerStatus {
     public void setTurn(int turn) {
         this.turn = turn;
     }
+    public int getLevel() { return level; }
+    public void setLevel(int level) { this.level = level; }
 
 }

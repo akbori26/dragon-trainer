@@ -7,5 +7,6 @@ CREATE TABLE player_status (
     lives INTEGER NOT NULL,
     score INTEGER NOT NULL,
     turn INTEGER NOT NULL,
+    level INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (game_id)
 );

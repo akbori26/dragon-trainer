@@ -26,6 +26,7 @@ CREATE TABLE player_status (
     lives INTEGER NOT NULL,
     score INTEGER NOT NULL,
     turn INTEGER NOT NULL,
+    level INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (game_id)
 );
 
@@ -35,5 +36,13 @@ CREATE TABLE cached_ad (
     ad_id TEXT, message TEXT,
     reward INTEGER NOT NULL, expires_in INTEGER NOT NULL,
     probability TEXT, risk_category TEXT, used INTEGER NOT NULL DEFAULT 0, fetched_turn INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (game_id, display_index)
+);
+
+CREATE TABLE cached_item (
+    game_id TEXT NOT NULL,
+    display_index INTEGER NOT NULL,
+    item_id TEXT, name TEXT,
+    cost INTEGER NOT NULL,
     PRIMARY KEY (game_id, display_index)
 );

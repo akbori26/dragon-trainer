@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local game database (rebuild with src/main/resources/data/mugloar_schema.sql) ###
+data/*.db
+data/*.db-journal

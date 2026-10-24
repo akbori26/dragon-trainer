@@ -2,6 +2,7 @@ package com.akbori.solution.mugloar.service;
 
 import com.akbori.solution.mugloar.dto.AdItem;
 import com.akbori.solution.mugloar.dto.GameStartResponse;
+import com.akbori.solution.mugloar.dto.ReputationResponse;
 import com.akbori.solution.mugloar.dto.SolutionResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -133,6 +134,47 @@ class MugloarServiceTest {
                 .andRespond(withStatus(HttpStatus.valueOf(status)));
 
         SolutionResponse response = mugloarService.solveAd(gameId, adId);
+
+        assertThat(response).isNull();
+        assertThat(output).contains(expectedLog);
+        server.verify();
+    }
+
+    @Test
+    void investigateReputationReturnsParsedReputationResponse() {
+        String gameId = "abc123";
+
+        server.expect(requestTo("https://dragonsofmugloar.com/api/v2/" + gameId + "/investigate/reputation"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("""
+                        {"people":1.5,"state":-2.0,"underworld":0.25}
+                        """, MediaType.APPLICATION_JSON));
+
+        ReputationResponse response = mugloarService.investigateReputation(gameId);
+
+        assertThat(response.people()).isEqualTo(1.5);
+        assertThat(response.state()).isEqualTo(-2.0);
+        assertThat(response.underworld()).isEqualTo(0.25);
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "400, Bad request while investigating reputation for game: abc123",
+            "404, Game not found or already over: abc123",
+            "410, Game session has expired: abc123",
+            "500, Mugloar server error (500) while investigating reputation",
+            "503, Mugloar server error (503) while investigating reputation",
+            "418, Unexpected response (418) while investigating reputation"
+    })
+    void investigateReputationReturnsNullOnErrorStatus(int status, String expectedLog, CapturedOutput output) {
+        String gameId = "abc123";
+
+        server.expect(requestTo("https://dragonsofmugloar.com/api/v2/" + gameId + "/investigate/reputation"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.valueOf(status)));
+
+        ReputationResponse response = mugloarService.investigateReputation(gameId);
 
         assertThat(response).isNull();
         assertThat(output).contains(expectedLog);

@@ -27,8 +27,8 @@ public class MugloarService {
 
     private final RestClient restClient;
 
-    public MugloarService() {
-        this.restClient = RestClient.builder()
+    public MugloarService(RestClient.Builder builder) {
+        this.restClient = builder
                 .baseUrl("https://dragonsofmugloar.com/api/v2")
                 .build();
     }

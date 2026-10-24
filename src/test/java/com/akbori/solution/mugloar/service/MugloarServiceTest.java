@@ -80,6 +80,26 @@ class MugloarServiceTest {
         server.verify();
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "400, Bad request while fetching the shop/market items",
+            "404, Game not found or already over",
+            "410, Game session has expired",
+            "500, Mugloar server error (500) while fetching the shop items",
+            "418, Unexpected response (418) while fetching the shop items"
+    })
+    void getMarketItemsReturnsEmptyListOnErrorStatus(int status, String expectedLog, CapturedOutput output) {
+        String gameId = "abc123";
+
+        server.expect(requestTo("https://dragonsofmugloar.com/api/v2/" + gameId + "/shop"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.valueOf(status)));
+
+        assertThat(mugloarService.getMarketItems(gameId)).isEmpty();
+        assertThat(output).contains(expectedLog).doesNotContain("message board");
+        server.verify();
+    }
+
 
     @Test
     void getMessageBoardReturnsParsedBoardOfMessages(){

@@ -1,6 +1,10 @@
 spring:
   application:
     name: dragon-trainer
+  main:
+    # The CLI doesn't serve web pages, so don't start Tomcat on port 8080.
+    # The web starter stays in the pom for a future web version.
+    web-application-type: none
   datasource:
     # Relative to the folder the app is started from (the project root with ./mvnw spring-boot:run).
     # Set MUGLOAR_DB_PATH to use a database somewhere else.

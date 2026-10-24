@@ -114,6 +114,10 @@ A failed action prints a message and returns you to the menu. The terminal never
 
 If starting a new game fails, the current game stays selected.
 
+Option `10` quits, and so does closing the input (Ctrl+D, or the end of a piped script); both exit cleanly.
+The client doesn't start a web server, so it never needs port 8080. Two copies can run at once, but they share
+`data/mugloar.db`, so don't play the same game in both.
+
 ## Project layout
 ```
 src/main/java/com/akbori/solution/mugloar/

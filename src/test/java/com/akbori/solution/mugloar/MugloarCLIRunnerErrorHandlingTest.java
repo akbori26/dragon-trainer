@@ -1,5 +1,7 @@
 package com.akbori.solution.mugloar;
 
+import com.akbori.solution.mugloar.dto.AdItem;
+import com.akbori.solution.mugloar.model.CachedAd;
 import com.akbori.solution.mugloar.repository.AppConfigRepository;
 import com.akbori.solution.mugloar.repository.CachedAdRepository;
 import com.akbori.solution.mugloar.repository.CachedItemRepository;
@@ -17,6 +19,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Scanner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,5 +104,37 @@ class MugloarCLIRunnerErrorHandlingTest {
         command("42");
 
         assertThat(output.getOut()).contains("Invalid option");
+    }
+
+    // --- Input ending (Ctrl+D, end of a piped script) ---
+
+    /** Runs the whole menu loop with the given text as keyboard input. */
+    private void runWithInput(String input) throws Exception {
+        InputStream original = System.in;
+        try {
+            System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+            runner.run();
+        } finally {
+            System.setIn(original);
+        }
+    }
+
+    @Test
+    void menuExitsCleanlyWhenInputEnds(CapturedOutput output) {
+        assertThatCode(() -> runWithInput("")).doesNotThrowAnyException();
+
+        assertThat(output.getOut()).contains("Input closed. Goodbye!");
+    }
+
+    @Test
+    void inputEndingAtAnIndexPromptEndsTheMenuCleanly(CapturedOutput output) {
+        AdItem ad = new AdItem("ad-1", "Help a farmer", 20, 5, null, "Piece of cake");
+        when(adRepo.findByGameIdOrderByDisplayIndexAsc(GAME_ID)).thenReturn(List.of(new CachedAd(GAME_ID, 0, ad, "🟢 SAFE", 0)));
+
+        // "3" opens Solve Ad, then the input ends before an index is typed
+        assertThatCode(() -> runWithInput("3\n")).doesNotThrowAnyException();
+
+        verify(mugloarService, never()).solveAd(any(), any());
+        assertThat(output.getOut()).contains("Input closed before an index was entered.", "Input closed. Goodbye!");
     }
 }

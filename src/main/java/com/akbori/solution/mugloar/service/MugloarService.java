@@ -257,9 +257,9 @@ public class MugloarService {
                         case 410 -> System.out.println("❌ Game session has expired: " + gameId);
                         default -> {
                             if (status.is5xxServerError()) {
-                                System.out.println("❌ Mugloar server error (" + status.value() + ") while fetching the message board.");
+                                System.out.println("❌ Mugloar server error (" + status.value() + ") while fetching the shop items.");
                             } else {
-                                System.out.println("❌ Unexpected response (" + status.value() + ") while fetching the message board.");
+                                System.out.println("❌ Unexpected response (" + status.value() + ") while fetching the shop items.");
                             }
                         }
                     }

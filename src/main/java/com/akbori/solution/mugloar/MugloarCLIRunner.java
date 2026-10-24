@@ -16,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -59,7 +60,7 @@ public class MugloarCLIRunner implements CommandLineRunner {
     /**
      * Entry point of the CLI.
      * Auto-resumes the last saved game (LAST_GAME_ID in app_config) if there is one,
-     * then loops on the action menu until the user chooses to exit.
+     * then loops on the action menu until the user chooses to exit or the input ends (Ctrl+D, end of a piped script).
      */
     @Override
     public void run(String... args) throws Exception {
@@ -83,6 +84,11 @@ public class MugloarCLIRunner implements CommandLineRunner {
         while (true) {
             printGridMenu();
             System.out.print("\nSelect an action [1-10]: ");
+            // No more input: leave the loop instead of failing on nextLine()
+            if (!scanner.hasNextLine()) {
+                System.out.println("\nInput closed. Goodbye!");
+                return;
+            }
             String command = scanner.nextLine().trim();
 
             if (command.equals("10")) {
@@ -114,6 +120,9 @@ public class MugloarCLIRunner implements CommandLineRunner {
                 case "9" -> handleBuying(scanner);
                 default -> System.out.println("❌ Invalid option. Please input a number from 1 to 10.");
             }
+        } catch (NoSuchElementException e) {
+            // The input ended while an action was asking for an index; the menu loop then exits
+            System.out.println("\nInput closed before an index was entered.");
         } catch (ResourceAccessException e) {
             System.out.println("🌐 Could not reach the Mugloar server. Check your internet connection and try again.");
         } catch (RestClientException e) {

@@ -148,13 +148,17 @@ feature/<name>  ->  develop  ->  release/BGBNK_<yyyyMMdd>_<NNN>     e.g. release
 Feature branches are merged only into `develop`, and `develop` only into a release branch. A release
 branch name has a real date and a counter from `001` to `999`.
 
-- **Merge from the web:** Actions → **Merge branch** → **Run workflow**, then enter the source and target
-  branch. A release branch that doesn't exist yet is created from `main`. The merged code is tested
-  (without the live tests) before it's pushed, so a conflict or a failing test changes nothing.
+- **Merge from the web:** Actions → **Merge branch** → **Run workflow**, then enter the source branch and,
+  optionally, the target. With the target left empty, `develop` goes into the next release branch for
+  today (UTC), e.g. `release/BGBNK_20261024_001`, then `_002` for the second release that day, and a
+  feature branch goes into `develop`. A release branch that doesn't exist yet is created from `main`. The
+  merged code is tested (without the live tests) before it's pushed, so a conflict or a failing test
+  changes nothing.
 - **Pull requests:** the **Branch rules** check fails a pull request that breaks the flow. Make it a
   required status check for `develop` and `release/*` to block such merges.
 
-The rules live in `.github/scripts/check-merge-rule.sh`, used by both workflows.
+The rules live in `.github/scripts/check-merge-rule.sh`, used by both workflows, and the next release
+name comes from `.github/scripts/next-release-branch.sh`.
 
 ## Tests
 ```bash

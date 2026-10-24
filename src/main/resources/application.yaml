@@ -2,7 +2,9 @@ spring:
   application:
     name: dragon-trainer
   datasource:
-    url: jdbc:sqlite:/Users/fahrettin/development/dragon-trainer/src/main/resources/data/mugloar.db
+    # Relative to the folder the app is started from (the project root with ./mvnw spring-boot:run).
+    # Set MUGLOAR_DB_PATH to use a database somewhere else.
+    url: jdbc:sqlite:${MUGLOAR_DB_PATH:data/mugloar.db}
     driver-class-name: org.sqlite.JDBC
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect

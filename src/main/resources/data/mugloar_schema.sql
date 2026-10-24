@@ -1,6 +1,6 @@
 -- DDL for mugloar.db, exported from the live database with `sqlite3 mugloar.db .schema`.
 -- sqlite_sequence is left out: SQLite creates it itself for the AUTOINCREMENT column in mission_log.
--- To rebuild an empty database: sqlite3 mugloar.db < mugloar_schema.sql
+-- To create an empty database, from the project root: sqlite3 data/mugloar.db < src/main/resources/data/mugloar_schema.sql
 
 CREATE TABLE app_config (
     config_key TEXT NOT NULL,

@@ -9,27 +9,36 @@ That lets you close the terminal and resume the same game later.
 ## Requirements
 - Java 21
 - Network access to `https://dragonsofmugloar.com`
-- Optional: the `sqlite3` command-line tool, if you want to inspect or rebuild the database
+- The `sqlite3` command-line tool, to create the database the first time
 
 Maven does not need to be installed. The project ships with the Maven wrapper (`./mvnw`).
 
 ## Setup
-The SQLite database is `src/main/resources/data/mugloar.db`. Its path is set in
-`src/main/resources/application.yaml`:
+Your games are stored in a local SQLite database, `data/mugloar.db`. It is not part of the repository
+(`data/*.db` is in `.gitignore`), so each checkout creates its own from the DDL script:
+
+```bash
+sqlite3 data/mugloar.db < src/main/resources/data/mugloar_schema.sql
+```
+
+The path is set in `src/main/resources/application.yaml`:
 
 ```yaml
 spring:
   datasource:
-    url: jdbc:sqlite:/Users/fahrettin/development/dragon-trainer/src/main/resources/data/mugloar.db
+    url: jdbc:sqlite:${MUGLOAR_DB_PATH:data/mugloar.db}
 ```
 
-The path is absolute. On another machine, change it to where the project is checked out.
-
-To start from an empty database, rebuild it from the DDL script:
+`data/mugloar.db` is relative to the folder the app is started from, which is the project root when you
+use `./mvnw spring-boot:run`. To use a database somewhere else, for example when running a built jar
+from another folder, set `MUGLOAR_DB_PATH`:
 
 ```bash
-sqlite3 src/main/resources/data/mugloar.db < src/main/resources/data/mugloar_schema.sql
+MUGLOAR_DB_PATH=/path/to/mugloar.db ./mvnw spring-boot:run
 ```
+
+If the database file is missing, SQLite creates an empty one without tables, and the first action fails
+with "no such table". Run the `sqlite3` command above to fix it.
 
 ## Running
 ```bash
@@ -100,8 +109,9 @@ src/main/java/com/akbori/solution/mugloar/
   model/                  JPA entities stored in SQLite
   repository/             Spring Data repositories
 src/main/resources/data/
-  mugloar.db              the SQLite database
-  mugloar_schema.sql      DDL to rebuild it
+  mugloar_schema.sql      DDL to create the database
+data/
+  mugloar.db              your local SQLite database (not in git)
 ```
 
 ### Database tables
@@ -127,7 +137,7 @@ src/main/resources/data/
 | `MugloarCLIRunnerSolveTest` | Solve Ad uses the current game's stored board (also after a new game or a resume), refuses expired ads, and recreates a missing player status |
 | `MugloarCLIRunnerErrorHandlingTest` | Network, response and database errors are reported without ending the terminal |
 | `*RepositoryTest` | Each repository, against a throwaway in-memory SQLite database |
-| `DragonTrainerApplicationTests` | The Spring context starts. It sets `mugloar.cli.enabled=false` so the menu doesn't wait for input |
+| `DragonTrainerApplicationTests` | The Spring context starts. It sets `mugloar.cli.enabled=false` so the menu doesn't wait for input, and uses an in-memory database |
 
 To run one test class:
 

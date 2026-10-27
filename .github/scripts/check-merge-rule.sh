@@ -2,7 +2,8 @@
 # Checks that merging SOURCE into TARGET follows the branch flow:
 #
 #   feature/<anything>  ->  develop
-#   develop             ->  release/BGBNK_<yyyyMMdd>_<NNN>   e.g. release/BGBNK_20261024_001
+#   develop             ->  test
+#   test                ->  release/BGBNK_<yyyyMMdd>_<NNN>   e.g. release/BGBNK_20261024_001
 #
 # Every other combination is refused. Used by the merge-branch and branch-rules workflows.
 #
@@ -38,10 +39,12 @@ valid_release_branch() {
 if [[ "$source_branch" =~ ^feature/.+ ]]; then
   [[ "$target_branch" == "develop" ]] || refuse "Feature branches can only be merged into develop."
 elif [[ "$source_branch" == "develop" ]]; then
+  [[ "$target_branch" == "test" ]] || refuse "develop can only be merged into test."
+elif [[ "$source_branch" == "test" ]]; then
   valid_release_branch "$target_branch" \
-    || refuse "develop can only be merged into a release branch named release/BGBNK_<yyyyMMdd>_<NNN> with a real date and a counter from 001 to 999."
+    || refuse "test can only be merged into a release branch named release/BGBNK_<yyyyMMdd>_<NNN> with a real date and a counter from 001 to 999."
 else
-  refuse "Only feature/* branches and develop can be merged by this flow."
+  refuse "Only feature/* branches, develop and test can be merged by this flow."
 fi
 
 echo "Allowed: '$source_branch' -> '$target_branch'."

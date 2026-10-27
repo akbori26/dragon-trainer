@@ -1,10 +1,11 @@
 # Fails a pull request that breaks the branch flow (see .github/scripts/check-merge-rule.sh):
 #   feature/<name>  ->  develop
-#   develop         ->  release/BGBNK_<yyyyMMdd>_<NNN>
+#   develop         ->  test
+#   test            ->  release/BGBNK_<yyyyMMdd>_<NNN>
 #
-# It checks pull requests into develop or a release branch, and pull requests from a feature branch
+# It checks pull requests into develop, test or a release branch, and pull requests from a feature branch
 # into anything else. To actually block such merges, make "Branch rules / check" a required status
-# check in the branch protection rules for develop and release/*.
+# check in the branch protection rules for develop, test and release/*.
 
 name: Branch rules
 
@@ -19,6 +20,7 @@ jobs:
   check:
     if: >-
       github.base_ref == 'develop' ||
+      github.base_ref == 'test' ||
       startsWith(github.base_ref, 'release/') ||
       startsWith(github.head_ref, 'feature/')
     runs-on: ubuntu-latest

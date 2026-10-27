@@ -2,12 +2,14 @@
 #
 # Only these merges are allowed (see .github/scripts/check-merge-rule.sh):
 #   feature/<name>  ->  develop
-#   develop         ->  release/BGBNK_<yyyyMMdd>_<NNN>   e.g. release/BGBNK_20261024_001
+#   develop         ->  test
+#   test            ->  release/BGBNK_<yyyyMMdd>_<NNN>   e.g. release/BGBNK_20261024_001
 #
 # Leave the target empty to let the workflow choose it:
-#   develop         ->  the next release branch for today (UTC), e.g. release/BGBNK_20261024_001, then _002, ...
 #   feature/<name>  ->  develop
-# A release branch that doesn't exist yet is created from main first.
+#   develop         ->  test
+#   test            ->  the next release branch for today (UTC), e.g. release/BGBNK_20261024_001, then _002, ...
+# A missing test branch is created from develop first, and a missing release branch from test.
 # The merge is tested before it is pushed; on a conflict or a failing test nothing is pushed.
 #
 # GitHub only shows the "Run workflow" button for workflows on the default branch (main),
@@ -19,11 +21,11 @@ on:
   workflow_dispatch:
     inputs:
       source:
-        description: "Branch to merge from: feature/<name> or develop"
+        description: "Branch to merge from: feature/<name>, develop or test"
         required: true
         type: string
       target:
-        description: "Branch to merge into. Leave empty for develop -> next release branch, or feature -> develop"
+        description: "Branch to merge into. Leave empty for feature -> develop, develop -> test, or test -> next release branch"
         required: false
         type: string
 
@@ -52,8 +54,10 @@ jobs:
       - name: Choose the target branch when it's left empty
         if: inputs.target == ''
         run: |
-          if [[ "$SOURCE" == "develop" ]]; then
+          if [[ "$SOURCE" == "test" ]]; then
             TARGET="$(.github/scripts/next-release-branch.sh)"
+          elif [[ "$SOURCE" == "develop" ]]; then
+            TARGET="test"
           elif [[ "$SOURCE" == feature/* ]]; then
             TARGET="develop"
           else
@@ -73,13 +77,16 @@ jobs:
             exit 1
           fi
 
-      - name: Check out the target branch (create a missing release branch from main)
+      - name: Check out the target branch (create a missing test branch from develop, a missing release branch from test)
         run: |
           if git rev-parse --verify --quiet "refs/remotes/origin/$TARGET" >/dev/null; then
             git checkout -B "$TARGET" "origin/$TARGET"
+          elif [[ "$TARGET" == "test" ]]; then
+            echo "Branch 'test' does not exist yet; creating it from develop."
+            git checkout -B "$TARGET" origin/develop
           elif [[ "$TARGET" == release/* ]]; then
-            echo "Release branch '$TARGET' does not exist yet; creating it from main."
-            git checkout -B "$TARGET" origin/main
+            echo "Release branch '$TARGET' does not exist yet; creating it from test."
+            git checkout -B "$TARGET" origin/test
           else
             echo "::error::Target branch '$TARGET' does not exist."
             exit 1
